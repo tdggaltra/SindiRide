@@ -1,0 +1,1 @@
+export { NewRidePage } from './index'

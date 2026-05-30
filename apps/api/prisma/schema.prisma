@@ -1,0 +1,266 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [unaccent, pg_trgm]
+}
+
+enum Role {
+  SINDICO
+  MOTORISTA
+  ADMIN
+}
+
+enum UserStatus {
+  PENDENTE
+  ATIVO
+  BLOQUEADO
+  REJEITADO
+}
+enum RideStatus {
+  AGENDADA
+  ACEITA
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum CancelledBy {
+  SINDICO
+  MOTORISTA
+  ADMIN
+  SISTEMA
+}
+
+enum NotificationType {
+  CORRIDA_ACEITA
+  CORRIDA_INICIADA
+  CORRIDA_CONCLUIDA
+  CORRIDA_CANCELADA
+  CADASTRO_APROVADO
+  CADASTRO_REJEITADO
+  SEM_MOTORISTA
+}
+enum MandateType {
+  ELEITO
+  PROFISSIONAL
+  SUBSINDICO
+  INTERINO
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  cpf       String     @unique
+  phone     String
+  password  String
+  role      Role
+  status    UserStatus @default(PENDENTE)
+  avatarUrl String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  sindico   Sindico?
+  motorista Motorista?
+  admin     Admin?
+refreshTokens RefreshToken[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  approvedBy    User?   @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedById  String?
+  approvedAt    DateTime?
+  approvedUsers User[]  @relation("ApprovedBy")
+
+  @@index([email])
+  @@index([cpf])
+  @@index([role, status])
+  @@map("users")
+}
+model Sindico {
+  id                  String      @id @default(cuid())
+  userId              String      @unique
+  condominiumName     String
+  condominiumAddress  String
+  condominiumCity     String      @default("Londrina")
+  condominiumState    String      @default("PR")
+  condominiumZip      String
+  condominiumDistrict String
+  mandateType         MandateType
+  mandateStartDate    DateTime?
+  mandateEndDate      DateTime?
+  mandateDocumentUrl  String?
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rides Ride[]
+
+  @@map("sindicos")
+}
+model Motorista {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  vehicleBrand   String
+  vehicleModel   String
+  vehicleColor   String
+  vehiclePlate   String    @unique
+  vehicleYear    Int
+  cnhNumber      String    @unique
+  cnhCategory    String
+  cnhExpiry      DateTime
+  isAvailable    Boolean   @default(false)
+  lastLocationLat Float?
+  lastLocationLng Float?
+  lastSeenAt     DateTime?
+  ratingAvg      Float     @default(0)
+  ratingCount    Int       @default(0)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rides Ride[]
+
+  @@index([isAvailable])
+  @@map("motoristas")
+}
+model Admin {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admins")
+}
+model Route {
+  id        String   @id @default(cuid())
+  name      String
+  category  String?
+  address   String
+  district  String
+  city      String   @default("Londrina")
+  state     String   @default("PR")
+  lat       Float
+  lng       Float
+  isActive  Boolean  @default(true)
+  isPopular Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rides Ride[]
+
+  @@index([isActive])
+  @@map("routes")
+}
+model Ride {
+  id              String      @id @default(cuid())
+  sindicoId       String
+  motoristaId     String?
+  originAddress   String
+  originDistrict  String
+  originLat       Float
+  originLng       Float
+  destAddress     String
+  destDistrict    String
+  destLat         Float
+  destLng         Float
+  routeId         String?
+  estimatedDistanceKm Float?
+  estimatedDurationMin Int?
+  polyline        String?
+  scheduledAt     DateTime
+  isImmediate     Boolean    @default(false)
+  status          RideStatus @default(AGENDADA)
+  acceptedAt      DateTime?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  cancelledAt     DateTime?
+  cancelledBy     CancelledBy?
+  cancelReason    String?
+  rating          Int?
+  ratingComment   String?
+  ratedAt         DateTime?
+  notes           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+sindico   Sindico    @relation(fields: [sindicoId], references: [id])
+  motorista Motorista? @relation(fields: [motoristaId], references: [id])
+  route     Route?     @relation(fields: [routeId], references: [id])
+
+  statusHistory RideStatusHistory[]
+  notifications Notification[]
+
+  @@index([sindicoId])
+  @@index([motoristaId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("rides")
+}
+model RideStatusHistory {
+  id        String     @id @default(cuid())
+  rideId    String
+  status    RideStatus
+  changedAt DateTime   @default(now())
+  changedBy String?
+  note      String?
+
+  ride Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  @@index([rideId])
+  @@map("ride_status_history")
+}
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  rideId    String?
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  fcmToken  String?
+  sentAt    DateTime?
+  sentError String?
+  createdAt DateTime         @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ride Ride? @relation(fields: [rideId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

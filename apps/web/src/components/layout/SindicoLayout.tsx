@@ -1,0 +1,1 @@
+export { SindicoLayout } from './index'
