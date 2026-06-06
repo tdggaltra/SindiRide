@@ -1,0 +1,1 @@
+export { AdminRoutesPage } from './index'

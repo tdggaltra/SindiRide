@@ -1,0 +1,1 @@
+export { MotoristaDashboardPage } from './index'

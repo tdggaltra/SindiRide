@@ -78,6 +78,12 @@ export interface Ride {
   ratingComment?: string
   notes?: string
   createdAt: string
+  sindico?: {
+    condominiumName: string
+    condominiumAddress: string
+    condominiumDistrict: string
+    user: { name: string; phone: string }
+  }
   motorista?: Motorista
   route?: Route
 }

@@ -66,6 +66,18 @@ export const rideService = {
   },
 }
 
+// ── Auth extra ────────────────────────────────────────────────────────────
+export const authExtraService = {
+  forgotPassword: async (email: string) => {
+    const { data } = await api.post('/api/auth/forgot-password', { email })
+    return data
+  },
+  resetPassword: async (token: string, password: string) => {
+    const { data } = await api.post('/api/auth/reset-password', { token, password })
+    return data
+  },
+}
+
 // ── Síndico ────────────────────────────────────────────────────────────────
 export const sindicoService = {
   getMe: async () => {
@@ -132,6 +144,71 @@ export const adminService = {
 
   listRides: async (params?: Record<string, unknown>) => {
     const { data } = await api.get('/api/admin/rides', { params })
+    return data
+  },
+
+  // Motoristas
+  listMotoristas: async (page = 1) => {
+    const { data } = await api.get('/api/admin/motoristas', { params: { page } })
+    return data
+  },
+  createMotorista: async (payload: Record<string, unknown>) => {
+    const { data } = await api.post('/api/admin/motoristas', payload)
+    return data
+  },
+  toggleBlockMotorista: async (userId: string) => {
+    const { data } = await api.patch(`/api/admin/motoristas/${userId}/block`)
+    return data
+  },
+
+  exportRides: async (params?: Record<string, unknown>) => {
+    const { data } = await api.get('/api/admin/rides', { params: { limit: 1000, ...params } })
+    return data
+  },
+
+  // Rotas sugeridas
+  listAllRoutes: async () => {
+    const { data } = await api.get('/api/admin/routes')
+    return data
+  },
+  createRoute: async (payload: Record<string, unknown>) => {
+    const { data } = await api.post('/api/admin/routes', payload)
+    return data
+  },
+  updateRoute: async (id: string, payload: Record<string, unknown>) => {
+    const { data } = await api.patch(`/api/admin/routes/${id}`, payload)
+    return data
+  },
+  deleteRoute: async (id: string) => {
+    const { data } = await api.delete(`/api/admin/routes/${id}`)
+    return data
+  },
+}
+
+// ── Motorista ──────────────────────────────────────────────────────────────
+export const motoristaService = {
+  getMe: async () => {
+    const { data } = await api.get('/api/motoristas/me')
+    return data
+  },
+
+  getPendingRides: async (): Promise<Ride[]> => {
+    const { data } = await api.get('/api/motoristas/rides/pending')
+    return data
+  },
+
+  getActiveRide: async (): Promise<Ride | null> => {
+    const { data } = await api.get('/api/motoristas/rides/active')
+    return data
+  },
+
+  toggleAvailability: async (available: boolean) => {
+    const { data } = await api.patch('/api/motoristas/availability', { available })
+    return data as { available: boolean }
+  },
+
+  getRideHistory: async (page = 1): Promise<Paginated<Ride>> => {
+    const { data } = await api.get('/api/motoristas/rides/history', { params: { page } })
     return data
   },
 }

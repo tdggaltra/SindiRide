@@ -3,8 +3,12 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import App from './App'
+import { ErrorBoundary } from '@/components/ui'
+import { setupForegroundMessages } from '@/services/fcm'
 import 'leaflet/dist/leaflet.css'
-import './styles/globals.css'  
+import './styles/globals.css'
+
+setupForegroundMessages()  
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,9 +22,11 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <App />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 )

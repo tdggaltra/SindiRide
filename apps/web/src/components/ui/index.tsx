@@ -111,3 +111,41 @@ export function RideStatusBadge({ status }: { status: RideStatus }) {
   const { label, variant } = rideStatusMap[status]
   return <Badge variant={variant}>{label}</Badge>
 }
+
+export { ErrorBoundary } from './ErrorBoundary'
+
+// ── Pagination ─────────────────────────────────────────────────────────────
+export function Pagination({
+  page,
+  totalPages,
+  onPrev,
+  onNext,
+}: {
+  page: number
+  totalPages: number
+  onPrev: () => void
+  onNext: () => void
+}) {
+  if (totalPages <= 1) return null
+  return (
+    <div className="flex items-center justify-end gap-2 mt-4">
+      <span className="text-xs text-gray-400">
+        Página {page} de {totalPages}
+      </span>
+      <button
+        onClick={onPrev}
+        disabled={page === 1}
+        className="h-7 px-3 rounded-lg border border-gray-200 text-xs text-gray-500 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Anterior
+      </button>
+      <button
+        onClick={onNext}
+        disabled={page === totalPages}
+        className="h-7 px-3 rounded-lg border border-gray-200 text-xs text-gray-500 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Próxima
+      </button>
+    </div>
+  )
+}

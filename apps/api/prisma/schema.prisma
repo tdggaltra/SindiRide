@@ -62,6 +62,7 @@ model User {
   role      Role
   status    UserStatus @default(PENDENTE)
   avatarUrl String?
+  fcmToken  String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   deletedAt DateTime?
@@ -69,7 +70,8 @@ model User {
   sindico   Sindico?
   motorista Motorista?
   admin     Admin?
-refreshTokens RefreshToken[]
+refreshTokens      RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   notifications Notification[]
   auditLogs     AuditLog[]
 
@@ -246,6 +248,20 @@ model RefreshToken {
   @@index([token])
   @@map("refresh_tokens")
 }
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("password_reset_tokens")
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   userId     String

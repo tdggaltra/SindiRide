@@ -1,9 +1,9 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link } from 'react-router-dom'
-import { Lock, CreditCard, Star } from 'lucide-react'
-import { useLogin } from '@/hooks'
+import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Lock, CreditCard, Star, Mail, CheckCircle } from 'lucide-react'
+import { useLogin, useForgotPassword, useResetPassword } from '@/hooks'
 import { Button, Input } from '@/components/ui'
 
 // ── Login ──────────────────────────────────────────────────────────────────
@@ -197,6 +197,164 @@ export function PendingPage() {
           Voltar ao login
         </Button>
       </Link>
+    </div>
+  )
+}
+
+// ── ForgotPassword ─────────────────────────────────────────────────────────
+const forgotSchema = z.object({ email: z.string().email('E-mail inválido') })
+type ForgotForm = z.infer<typeof forgotSchema>
+
+export function ForgotPasswordPage() {
+  const forgot = useForgotPassword()
+  const { register, handleSubmit, formState: { errors } } = useForm<ForgotForm>({
+    resolver: zodResolver(forgotSchema),
+  })
+
+  if (forgot.isSuccess) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-7 h-7 text-green-600" />
+        </div>
+        <h1 className="text-lg font-medium text-gray-900 mb-2">E-mail enviado!</h1>
+        <p className="text-sm text-gray-500 mb-2">
+          Se o e-mail estiver cadastrado, você receberá as instruções em breve.
+        </p>
+        {(forgot.data as any)?.resetLink && (
+          <div className="bg-brand-50 rounded-xl p-3 mb-5 text-left">
+            <p className="text-xs font-medium text-brand-700 mb-1">Link de redefinição (ambiente dev):</p>
+            <a
+              href={(forgot.data as any).resetLink}
+              className="text-xs text-brand-600 break-all underline"
+            >
+              {(forgot.data as any).resetLink}
+            </a>
+          </div>
+        )}
+        <Link to="/login">
+          <Button variant="secondary" className="w-full">Voltar ao login</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
+          <Mail className="w-4 h-4 text-brand-600" />
+        </div>
+        <div>
+          <h1 className="text-base font-medium text-gray-900">Esqueci minha senha</h1>
+          <p className="text-xs text-gray-500">Enviaremos o link de redefinição</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit(d => forgot.mutate(d.email))} className="flex flex-col gap-4">
+        <Input
+          label="E-mail cadastrado"
+          type="email"
+          placeholder="seu@email.com"
+          icon={<Mail className="w-4 h-4" />}
+          error={errors.email?.message}
+          {...register('email')}
+        />
+
+        {forgot.isError && (
+          <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+            Erro ao processar solicitação. Tente novamente.
+          </p>
+        )}
+
+        <Button type="submit" loading={forgot.isPending} className="w-full">
+          Enviar link de redefinição
+        </Button>
+      </form>
+
+      <div className="mt-4 text-center">
+        <Link to="/login" className="text-sm text-brand-600">← Voltar ao login</Link>
+      </div>
+    </div>
+  )
+}
+
+// ── ResetPassword ──────────────────────────────────────────────────────────
+const resetSchema = z.object({
+  password:        z.string().min(8, 'Mínimo 8 caracteres'),
+  confirmPassword: z.string(),
+}).refine(d => d.password === d.confirmPassword, {
+  message: 'As senhas não conferem',
+  path: ['confirmPassword'],
+})
+type ResetForm = z.infer<typeof resetSchema>
+
+export function ResetPasswordPage() {
+  const { token } = useParams<{ token: string }>()
+  const navigate = useNavigate()
+  const reset = useResetPassword()
+  const { register, handleSubmit, formState: { errors } } = useForm<ResetForm>({
+    resolver: zodResolver(resetSchema),
+  })
+
+  if (reset.isSuccess) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-7 h-7 text-green-600" />
+        </div>
+        <h1 className="text-lg font-medium text-gray-900 mb-2">Senha redefinida!</h1>
+        <p className="text-sm text-gray-500 mb-6">Faça login com sua nova senha.</p>
+        <Button className="w-full" onClick={() => navigate('/login')}>
+          Fazer login
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
+          <Lock className="w-4 h-4 text-brand-600" />
+        </div>
+        <div>
+          <h1 className="text-base font-medium text-gray-900">Redefinir senha</h1>
+          <p className="text-xs text-gray-500">Escolha uma nova senha segura</p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={handleSubmit(d => reset.mutate({ token: token!, password: d.password }))}
+        className="flex flex-col gap-4"
+      >
+        <Input
+          label="Nova senha"
+          type="password"
+          placeholder="Mínimo 8 caracteres"
+          icon={<Lock className="w-4 h-4" />}
+          error={errors.password?.message}
+          {...register('password')}
+        />
+        <Input
+          label="Confirmar nova senha"
+          type="password"
+          placeholder="Repita a senha"
+          icon={<Lock className="w-4 h-4" />}
+          error={errors.confirmPassword?.message}
+          {...register('confirmPassword')}
+        />
+
+        {reset.isError && (
+          <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+            {(reset.error as any)?.response?.data?.message ?? 'Link inválido ou expirado.'}
+          </p>
+        )}
+
+        <Button type="submit" loading={reset.isPending} className="w-full">
+          Redefinir senha
+        </Button>
+      </form>
     </div>
   )
 }

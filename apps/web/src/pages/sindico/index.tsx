@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAuthStore } from '@/store/auth.store'
 import { useRides, useRide, useCreateRide, useCancelRide, useRateRide, useSindicoMe, useLogout, useRoutes } from '@/hooks'
-import { Button, Card, RideStatusBadge, Spinner } from '@/components/ui'
+import { Button, Card, RideStatusBadge, Spinner, ErrorBoundary } from '@/components/ui'
 import { useSocketEvent } from '@/hooks/useSocket'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
@@ -296,12 +296,14 @@ export function NewRidePage() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Mapa de preview */}
-        <MapView
-          origin={origin ?? undefined}
-          destination={dest ? { lat: dest.lat, lng: dest.lng } : undefined}
-          encodedPolyline={routePreview?.polyline}
-          className="w-full h-44 rounded-xl overflow-hidden"
-        />
+        <ErrorBoundary inline>
+          <MapView
+            origin={origin ?? undefined}
+            destination={dest ? { lat: dest.lat, lng: dest.lng } : undefined}
+            encodedPolyline={routePreview?.polyline}
+            className="w-full h-44 rounded-xl overflow-hidden"
+          />
+        </ErrorBoundary>
 
         {/* Info de rota */}
         {routePreview && (
@@ -524,13 +526,15 @@ export function RideTrackingPage() {
     <div className="flex flex-col min-h-full">
       {/* Mapa de rastreamento */}
       <div className="relative h-48">
-        <MapView
-          origin={{ lat: ride.originLat, lng: ride.originLng }}
-          destination={{ lat: ride.destLat, lng: ride.destLng }}
-          driverLocation={driverLocation ?? undefined}
-          encodedPolyline={ride.polyline}
-          className="w-full h-full"
-        />
+        <ErrorBoundary inline>
+          <MapView
+            origin={{ lat: ride.originLat, lng: ride.originLng }}
+            destination={{ lat: ride.destLat, lng: ride.destLng }}
+            driverLocation={driverLocation ?? undefined}
+            encodedPolyline={ride.polyline}
+            className="w-full h-full"
+          />
+        </ErrorBoundary>
         <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-brand-600 text-white text-xs font-medium px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow">
           <Clock className="w-3.5 h-3.5" />
           {ride.estimatedDurationMin ? `Chega em ${ride.estimatedDurationMin} min` : 'Calculando...'}

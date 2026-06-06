@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { ForbiddenError, NotFoundError, BadRequestError, UnprocessableError } from '../../shared/errors/app.errors'
 import { RideStatus, CancelledBy } from '@prisma/client'
 import { calculateRoute } from '../../shared/utils/maps.service'
+import { notify } from '../../shared/utils/notifications'
 
 export const rideRoutes: FastifyPluginAsync = async (app) => {
   app.post('/', { onRequest: [app.authorize('SINDICO')] }, async (req, reply) => {
@@ -95,6 +96,13 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
         statusHistory: { create: { status: RideStatus.ACEITA, changedBy: motoristaId } } },
     })
     app.io.to(`ride:${id}`).to(`user:${ride.sindico.userId}`).emit('ride:accepted', { rideId: id, status: RideStatus.ACEITA })
+    notify(app.prisma, app.io, {
+      userId: ride.sindico.userId,
+      type: 'CORRIDA_ACEITA',
+      title: 'Motorista a caminho!',
+      body: 'Seu pedido foi aceito. O motorista está se deslocando até você.',
+      rideId: id,
+    }).catch(() => {})
     return reply.send(updated)
   })
 
@@ -112,6 +120,13 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
         statusHistory: { create: { status: RideStatus.EM_ANDAMENTO, changedBy: req.user.sub } } },
     })
     app.io.to(`ride:${id}`).to(`user:${ride.sindico.userId}`).emit('ride:started', { rideId: id, status: RideStatus.EM_ANDAMENTO })
+    notify(app.prisma, app.io, {
+      userId: ride.sindico.userId,
+      type: 'CORRIDA_INICIADA',
+      title: 'Corrida iniciada',
+      body: 'O motorista chegou à origem. Corrida em andamento.',
+      rideId: id,
+    }).catch(() => {})
     return reply.send(updated)
   })
 
@@ -129,6 +144,13 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
         statusHistory: { create: { status: RideStatus.CONCLUIDA, changedBy: req.user.sub } } },
     })
     app.io.to(`ride:${id}`).to(`user:${ride.sindico.userId}`).emit('ride:finished', { rideId: id, status: RideStatus.CONCLUIDA })
+    notify(app.prisma, app.io, {
+      userId: ride.sindico.userId,
+      type: 'CORRIDA_CONCLUIDA',
+      title: 'Corrida concluída!',
+      body: 'Você chegou ao destino. Boa reunião!',
+      rideId: id,
+    }).catch(() => {})
     return reply.send(updated)
   })
 
@@ -152,6 +174,23 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
     const targets = app.io.to(`ride:${id}`).to(`user:${ride.sindico.userId}`)
     if (ride.motorista) targets.to(`user:${ride.motorista.userId}`)
     targets.emit('ride:cancelled', { rideId: id, status: RideStatus.CANCELADA, reason })
+    if (cancelledBy === CancelledBy.MOTORISTA) {
+      notify(app.prisma, app.io, {
+        userId: ride.sindico.userId,
+        type: 'CORRIDA_CANCELADA',
+        title: 'Corrida cancelada',
+        body: 'O motorista cancelou a corrida. Tente agendar novamente.',
+        rideId: id,
+      }).catch(() => {})
+    } else if (cancelledBy === CancelledBy.SINDICO && ride.motorista) {
+      notify(app.prisma, app.io, {
+        userId: ride.motorista.userId,
+        type: 'CORRIDA_CANCELADA',
+        title: 'Corrida cancelada',
+        body: 'O síndico cancelou a corrida.',
+        rideId: id,
+      }).catch(() => {})
+    }
     return reply.send(updated)
   })
 

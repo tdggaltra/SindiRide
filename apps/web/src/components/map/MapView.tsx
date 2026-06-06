@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { MapPin } from 'lucide-react'
+import { ErrorBoundary } from '@/components/ui'
 
 interface LatLng { lat: number; lng: number }
 
@@ -108,39 +109,41 @@ export function MapView({ origin, destination, driverLocation, encodedPolyline, 
   }
 
   return (
-    <MapContainer
-      center={initialCenter}
-      zoom={13}
-      zoomControl
-      className={className}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-
-      <MapController
-        origin={origin}
-        destination={destination}
-        driverLocation={driverLocation}
-        polylinePositions={polylinePositions}
-      />
-
-      {origin && (
-        <Marker position={[origin.lat, origin.lng]} icon={originIcon} />
-      )}
-      {destination && (
-        <Marker position={[destination.lat, destination.lng]} icon={destIcon} />
-      )}
-      {driverLocation && (
-        <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon} />
-      )}
-      {polylinePositions && polylinePositions.length >= 2 && (
-        <Polyline
-          positions={polylinePositions}
-          pathOptions={{ color: '#185FA5', weight: 4, opacity: 0.8 }}
+    <ErrorBoundary inline>
+      <MapContainer
+        center={initialCenter}
+        zoom={13}
+        zoomControl
+        className={className}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-      )}
-    </MapContainer>
+
+        <MapController
+          origin={origin}
+          destination={destination}
+          driverLocation={driverLocation}
+          polylinePositions={polylinePositions}
+        />
+
+        {origin && (
+          <Marker position={[origin.lat, origin.lng]} icon={originIcon} />
+        )}
+        {destination && (
+          <Marker position={[destination.lat, destination.lng]} icon={destIcon} />
+        )}
+        {driverLocation && (
+          <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon} />
+        )}
+        {polylinePositions && polylinePositions.length >= 2 && (
+          <Polyline
+            positions={polylinePositions}
+            pathOptions={{ color: '#185FA5', weight: 4, opacity: 0.8 }}
+          />
+        )}
+      </MapContainer>
+    </ErrorBoundary>
   )
 }

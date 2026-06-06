@@ -1,7 +1,7 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { Car, Home, Calendar, Map, User, LayoutDashboard, Users, Settings, LogOut, Bell } from 'lucide-react'
+import { Outlet, NavLink } from 'react-router-dom'
+import { Car, Home, Calendar, Map, User, LayoutDashboard, Users, Settings, LogOut, Zap } from 'lucide-react'
 import { useAuthStore } from '@/store/auth.store'
-import { useLogout, useNotifications } from '@/hooks'
+import { useLogout, useNotifications, useMotoristaActiveRide } from '@/hooks'
 
 // ── AuthLayout ─────────────────────────────────────────────────────────────
 export function AuthLayout() {
@@ -24,7 +24,6 @@ export function AuthLayout() {
 
 // ── SindicoLayout — bottom nav mobile ─────────────────────────────────────
 export function SindicoLayout() {
-  const { user } = useAuthStore()
   const { data: notifications } = useNotifications()
   const unread = notifications?.filter(n => !n.isRead).length ?? 0
 
@@ -81,11 +80,12 @@ export function SindicoLayout() {
 
 // ── AdminLayout — sidebar desktop ──────────────────────────────────────────
 const adminNavItems = [
-  { to: '/admin',          label: 'Dashboard',  icon: LayoutDashboard, end: true },
-  { to: '/admin/corridas', label: 'Corridas',   icon: Car },
-  { to: '/admin/sindicos', label: 'Síndicos',   icon: Users },
-  { to: '/admin/rotas',    label: 'Rotas',      icon: Map },
-  { to: '/admin/config',   label: 'Configurações', icon: Settings },
+  { to: '/admin',             label: 'Dashboard',      icon: LayoutDashboard, end: true },
+  { to: '/admin/corridas',    label: 'Corridas',       icon: Car },
+  { to: '/admin/sindicos',    label: 'Síndicos',       icon: Users },
+  { to: '/admin/motoristas',  label: 'Motoristas',     icon: Car },
+  { to: '/admin/rotas',       label: 'Rotas',          icon: Map },
+  { to: '/admin/config',      label: 'Configurações',  icon: Settings },
 ]
 
 export function AdminLayout() {
@@ -156,6 +156,53 @@ export function AdminLayout() {
       <main className="flex-1 min-w-0 overflow-auto">
         <Outlet />
       </main>
+    </div>
+  )
+}
+
+// ── MotoristaLayout — bottom nav mobile ────────────────────────────────────
+export function MotoristaLayout() {
+  const { data: activeRide } = useMotoristaActiveRide()
+  const hasActive = !!activeRide
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col max-w-sm mx-auto relative">
+      <main className="flex-1 pb-20 overflow-y-auto">
+        <Outlet />
+      </main>
+
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-sm bg-white border-t border-gray-100 flex z-50">
+        <NavLink to="/motorista" end className={({ isActive }) =>
+          `flex-1 flex flex-col items-center py-3 gap-0.5 text-[10px] font-medium transition-colors ${isActive ? 'text-brand-600' : 'text-gray-400'}`
+        }>
+          <Home className="w-5 h-5" />
+          Início
+        </NavLink>
+
+        <NavLink to="/motorista/corridas" className={({ isActive }) =>
+          `flex-1 flex flex-col items-center py-3 gap-0.5 text-[10px] font-medium transition-colors ${isActive ? 'text-brand-600' : 'text-gray-400'}`
+        }>
+          <Car className="w-5 h-5" />
+          Corridas
+        </NavLink>
+
+        <NavLink to="/motorista/ativa" className={({ isActive }) =>
+          `flex-1 flex flex-col items-center py-3 gap-0.5 text-[10px] font-medium relative transition-colors ${isActive ? 'text-brand-600' : hasActive ? 'text-amber-500' : 'text-gray-400'}`
+        }>
+          {hasActive && (
+            <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          )}
+          <Zap className="w-5 h-5" />
+          Ativa
+        </NavLink>
+
+        <NavLink to="/motorista/perfil" className={({ isActive }) =>
+          `flex-1 flex flex-col items-center py-3 gap-0.5 text-[10px] font-medium transition-colors ${isActive ? 'text-brand-600' : 'text-gray-400'}`
+        }>
+          <User className="w-5 h-5" />
+          Perfil
+        </NavLink>
+      </nav>
     </div>
   )
 }
