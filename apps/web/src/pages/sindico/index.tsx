@@ -76,7 +76,7 @@ export function DashboardPage() {
         {/* Stats */}
         <div>
           <h2 className="text-sm font-medium text-gray-700 mb-3">Resumo</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { icon: Car,      label: 'Realizadas',  value: stats.concluidas },
               { icon: Calendar, label: 'Agendadas',   value: stats.agendadas },
@@ -143,7 +143,7 @@ export function RideHistoryPage() {
           <Link to="/corridas/nova" className="text-brand-600 text-sm font-medium mt-2 inline-block">Agendar primeira corrida</Link>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {data.data.map(ride => (
             <Link key={ride.id} to={`/corridas/${ride.id}`}>
               <Card className="flex items-center gap-3">
@@ -291,148 +291,146 @@ export function NewRidePage() {
   }
 
   return (
-    <div className="px-4 pt-12 pb-4">
+    <div className="px-4 pt-12 pb-4 md:pt-8 md:px-8">
       <h1 className="text-lg font-medium text-gray-900 mb-5">Agendar corrida</h1>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Mapa de preview */}
-        <ErrorBoundary inline>
-          <MapView
-            origin={origin ?? undefined}
-            destination={dest ? { lat: dest.lat, lng: dest.lng } : undefined}
-            encodedPolyline={routePreview?.polyline}
-            className="w-full h-44 rounded-xl overflow-hidden"
-          />
-        </ErrorBoundary>
+      <form onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-4 md:grid md:grid-cols-5 md:gap-6 md:items-start">
 
-        {/* Info de rota */}
-        {routePreview && (
-          <div className="flex items-center gap-3 px-1">
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <MapPin className="w-3.5 h-3.5 text-brand-500" />
-              {routePreview.distanceText}
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <Clock className="w-3.5 h-3.5 text-brand-500" />
-              {routePreview.durationText}
-            </div>
-          </div>
-        )}
-
-        {/* Origem */}
-        <Card>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Origem</p>
-          {!sindico ? (
-            <div className="flex items-center gap-2 h-10">
-              <div className="w-3.5 h-3.5 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-gray-400">Carregando...</span>
-            </div>
-          ) : (
-            <>
-              <AddressAutocomplete
-                value={origin?.address ?? ''}
-                placeholder="Endereço de partida"
-                onChange={result => { setOrigin(result); setOriginError(''); setRoutePreview(null) }}
-                onInputChange={() => { setOrigin(null); setRoutePreview(null) }}
+          {/* ── Coluna esquerda: mapa ── */}
+          <div className="md:col-span-2 md:sticky md:top-8">
+            <ErrorBoundary inline>
+              <MapView
+                origin={origin ?? undefined}
+                destination={dest ? { lat: dest.lat, lng: dest.lng } : undefined}
+                encodedPolyline={routePreview?.polyline}
+                className="w-full h-44 md:h-80 rounded-xl overflow-hidden"
               />
-              {originError && (
-                <p className="text-xs text-red-500 mt-1">{originError}</p>
-              )}
-            </>
-          )}
-        </Card>
+            </ErrorBoundary>
 
-        {/* Destino */}
-        <Card>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Destino</p>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Endereço</label>
-            <AddressAutocomplete
-              value={dest?.address ?? ''}
-              placeholder="Rua, número ou nome do local"
-              onChange={result => { setDest(result); setDestError('') }}
-              onInputChange={() => { setDest(null); setRoutePreview(null) }}
-            />
-            {destError && (
-              <p className="text-xs text-red-500 mt-1">{destError}</p>
-            )}
-          </div>
-        </Card>
-
-        {/* Quando */}
-        <Card>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Quando?</p>
-          <div className="flex gap-2 mb-3">
-            {[{ label: 'Agora', value: true }, { label: 'Agendar', value: false }].map(opt => (
-              <button
-                key={String(opt.value)}
-                type="button"
-                onClick={() => { setIsImmediate(opt.value); setScheduleError('') }}
-                className={`flex-1 h-9 rounded-lg text-sm font-medium border transition-colors ${
-                  isImmediate === opt.value
-                    ? 'bg-brand-50 border-brand-600 text-brand-800'
-                    : 'bg-gray-50 border-gray-200 text-gray-500'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {!isImmediate && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Data</label>
-                  <input
-                    type="date"
-                    className="input-field"
-                    value={date}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={e => { setDate(e.target.value); setScheduleError('') }}
-                    required={!isImmediate}
-                  />
+            {routePreview && (
+              <div className="flex items-center gap-4 mt-2 px-1">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <MapPin className="w-3.5 h-3.5 text-brand-500" />
+                  {routePreview.distanceText}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Horário</label>
-                  <input
-                    type="time"
-                    className="input-field"
-                    value={time}
-                    onChange={e => { setTime(e.target.value); setScheduleError('') }}
-                    required={!isImmediate}
-                  />
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Clock className="w-3.5 h-3.5 text-brand-500" />
+                  {routePreview.durationText}
                 </div>
               </div>
-              {scheduleError && (
-                <p className="text-xs text-red-500 mt-2">{scheduleError}</p>
+            )}
+          </div>
+
+          {/* ── Coluna direita: formulário ── */}
+          <div className="md:col-span-3 flex flex-col gap-4">
+            {/* Origem */}
+            <Card>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Origem</p>
+              {!sindico ? (
+                <div className="flex items-center gap-2 h-10">
+                  <div className="w-3.5 h-3.5 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-gray-400">Carregando...</span>
+                </div>
+              ) : (
+                <>
+                  <AddressAutocomplete
+                    value={origin?.address ?? ''}
+                    placeholder="Endereço de partida"
+                    onChange={result => { setOrigin(result); setOriginError(''); setRoutePreview(null) }}
+                    onInputChange={() => { setOrigin(null); setRoutePreview(null) }}
+                  />
+                  {originError && <p className="text-xs text-red-500 mt-1">{originError}</p>}
+                </>
               )}
-            </>
-          )}
-        </Card>
+            </Card>
 
-        {/* Observação */}
-        <Card>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Observação (opcional)</p>
-          <textarea
-            className="input-field h-16 resize-none py-2"
-            placeholder="Ex: necessito de ajuda com documentos..."
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
-        </Card>
+            {/* Destino */}
+            <Card>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Destino</p>
+              <AddressAutocomplete
+                value={dest?.address ?? ''}
+                placeholder="Rua, número ou nome do local"
+                onChange={result => { setDest(result); setDestError('') }}
+                onInputChange={() => { setDest(null); setRoutePreview(null) }}
+              />
+              {destError && <p className="text-xs text-red-500 mt-1">{destError}</p>}
+            </Card>
 
-        <p className="text-xs text-center text-gray-400">Corrida gratuita. Nenhum valor será cobrado.</p>
+            {/* Quando */}
+            <Card>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Quando?</p>
+              <div className="flex gap-2 mb-3">
+                {[{ label: 'Agora', value: true }, { label: 'Agendar', value: false }].map(opt => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => { setIsImmediate(opt.value); setScheduleError('') }}
+                    className={`flex-1 h-9 rounded-lg text-sm font-medium border transition-colors ${
+                      isImmediate === opt.value
+                        ? 'bg-brand-50 border-brand-600 text-brand-800'
+                        : 'bg-gray-50 border-gray-200 text-gray-500'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {!isImmediate && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Data</label>
+                      <input
+                        type="date"
+                        className="input-field"
+                        value={date}
+                        min={new Date().toISOString().split('T')[0]}
+                        onChange={e => { setDate(e.target.value); setScheduleError('') }}
+                        required={!isImmediate}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Horário</label>
+                      <input
+                        type="time"
+                        className="input-field"
+                        value={time}
+                        onChange={e => { setTime(e.target.value); setScheduleError('') }}
+                        required={!isImmediate}
+                      />
+                    </div>
+                  </div>
+                  {scheduleError && <p className="text-xs text-red-500 mt-2">{scheduleError}</p>}
+                </>
+              )}
+            </Card>
 
-        {createRide.isError && (
-          <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 text-center">
-            {(createRide.error as any)?.response?.data?.message ?? 'Erro ao criar corrida. Tente novamente.'}
-          </p>
-        )}
+            {/* Observação */}
+            <Card>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Observação (opcional)</p>
+              <textarea
+                className="input-field h-16 resize-none py-2"
+                placeholder="Ex: necessito de ajuda com documentos..."
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+              />
+            </Card>
 
-        <Button type="submit" loading={createRide.isPending} disabled={!dest}>
-          <Calendar className="w-4 h-4" />
-          Confirmar agendamento
-        </Button>
+            <p className="text-xs text-center text-gray-400">Corrida gratuita. Nenhum valor será cobrado.</p>
+
+            {createRide.isError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 text-center">
+                {(createRide.error as any)?.response?.data?.message ?? 'Erro ao criar corrida. Tente novamente.'}
+              </p>
+            )}
+
+            <Button type="submit" loading={createRide.isPending} disabled={!dest}>
+              <Calendar className="w-4 h-4" />
+              Confirmar agendamento
+            </Button>
+          </div>
+        </div>
       </form>
     </div>
   )
@@ -523,9 +521,9 @@ export function RideTrackingPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col md:grid md:grid-cols-2 min-h-[calc(100vh-2rem)]">
       {/* Mapa de rastreamento */}
-      <div className="relative h-48">
+      <div className="relative h-48 md:h-full md:min-h-[480px]">
         <ErrorBoundary inline>
           <MapView
             origin={{ lat: ride.originLat, lng: ride.originLng }}
@@ -541,7 +539,7 @@ export function RideTrackingPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-4 flex flex-col gap-4">
+      <div className="flex-1 px-4 py-4 md:px-6 md:py-6 flex flex-col gap-4 md:overflow-y-auto">
         {/* Status atual */}
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -770,7 +768,7 @@ export function RoutesPage() {
       ) : !routes?.length ? (
         <p className="text-center text-gray-400 text-sm py-12">Nenhum destino cadastrado</p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {routes.map(route => (
             <button
               key={route.id}

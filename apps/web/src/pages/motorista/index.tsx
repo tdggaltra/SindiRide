@@ -74,7 +74,7 @@ export function MotoristaDashboardPage() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-gray-100 rounded-xl p-4">
             <Star className="w-4 h-4 text-amber-500 mb-2" />
             <p className="text-xl font-medium text-gray-900">
@@ -170,7 +170,7 @@ export function MotoristaRidesPage() {
             <p className="text-xs mt-1">Aguarde novas solicitações</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {pendingRides.map(ride => (
               <Card key={ride.id}>
                 <div className="flex items-center gap-2 mb-3">
@@ -341,9 +341,9 @@ export function MotoristaActiveRidePage() {
   const polyline = ride.polyline ?? undefined
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col md:grid md:grid-cols-2 min-h-[calc(100vh-2rem)]">
       {/* Mapa */}
-      <div className="relative h-52">
+      <div className="relative h-52 md:h-full md:min-h-[480px]">
         <ErrorBoundary inline>
           <MapView
             origin={{ lat: ride.originLat, lng: ride.originLng }}
@@ -358,7 +358,7 @@ export function MotoristaActiveRidePage() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-4 flex flex-col gap-4">
+      <div className="flex-1 px-4 py-4 md:px-6 md:py-6 flex flex-col gap-4 md:overflow-y-auto">
         {/* Síndico */}
         <Card className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 font-medium flex-shrink-0">
