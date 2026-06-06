@@ -217,6 +217,36 @@ export function useToggleBlockMotorista() {
   })
 }
 
+export function useToggleBlockSindico() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => adminService.toggleBlockSindico(userId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'sindicos'] }),
+  })
+}
+
+export function useDeleteSindico() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => adminService.deleteSindico(userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'sindicos'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+    },
+  })
+}
+
+export function useDeleteMotorista() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => adminService.deleteMotorista(userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'motoristas'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+    },
+  })
+}
+
 export function useAdminRoutes() {
   return useQuery({
     queryKey: ['admin', 'routes'],

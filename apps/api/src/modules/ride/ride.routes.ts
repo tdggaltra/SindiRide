@@ -14,6 +14,10 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
       destLat:       z.number().refine((v: number) => v !== 0, 'Selecione um destino válido'),
       destLng:       z.number().refine((v: number) => v !== 0, 'Selecione um destino válido'),
       scheduledAt: z.coerce.date(), isImmediate: z.boolean().default(false), notes: z.string().optional(),
+      // Dados de rota pré-calculados pelo frontend (evita chamada OSRM duplicada no servidor)
+      clientDistanceKm:  z.number().positive().optional(),
+      clientDurationMin: z.number().int().positive().optional(),
+      clientPolyline:    z.string().optional(),
     })
     const data = schema.parse(req.body)
     const { sindicoId } = req.user
@@ -34,19 +38,25 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
     })
     if (active) throw new UnprocessableError('Você já possui uma corrida ativa')
 
-    const routeInfo = await calculateRoute(
-      { lat: data.originLat, lng: data.originLng },
-      { lat: data.destLat, lng: data.destLng },
-    )
+    // Usa dados enviados pelo frontend quando disponíveis (OSRM já calculado no browser)
+    // Caso contrário, chama OSRM no servidor (com Haversine como fallback)
+    const routeInfo = (data.clientDistanceKm && data.clientDurationMin)
+      ? { distanceKm: data.clientDistanceKm, durationMin: data.clientDurationMin, polyline: data.clientPolyline ?? '' }
+      : await calculateRoute(
+          { lat: data.originLat, lng: data.originLng },
+          { lat: data.destLat, lng: data.destLng },
+        )
+
+    const { clientDistanceKm, clientDurationMin, clientPolyline, ...rideData } = data
 
     const ride = await app.prisma.ride.create({
       data: {
         sindicoId,
-        ...data,
+        ...rideData,
         status: RideStatus.AGENDADA,
-        estimatedDistanceKm: routeInfo?.distanceKm ?? null,
-        estimatedDurationMin: routeInfo?.durationMin ?? null,
-        polyline: routeInfo?.polyline ?? null,
+        estimatedDistanceKm: routeInfo.distanceKm,
+        estimatedDurationMin: routeInfo.durationMin,
+        polyline: routeInfo.polyline,
         statusHistory: { create: { status: RideStatus.AGENDADA, note: 'Criada pelo síndico' } },
       },
     })

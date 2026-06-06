@@ -21,7 +21,17 @@ export const motoristaRoutes: FastifyPluginAsync = async (app) => {
   })
 
   // Corridas AGENDADAS disponíveis para aceite (sem motorista atribuído)
-  app.get('/rides/pending', { onRequest: [app.authorize('MOTORISTA')] }, async (_req, reply) => {
+  // Retorna [] se motorista estiver offline — deve ficar online para receber corridas
+  app.get('/rides/pending', { onRequest: [app.authorize('MOTORISTA')] }, async (req, reply) => {
+    const { motoristaId } = req.user
+    if (!motoristaId) throw new ForbiddenError('Perfil de motorista não encontrado')
+
+    const motorista = await app.prisma.motorista.findUnique({
+      where: { id: motoristaId },
+      select: { isAvailable: true },
+    })
+    if (!motorista?.isAvailable) return reply.send([])
+
     const rides = await app.prisma.ride.findMany({
       where: { status: 'AGENDADA', motoristaId: null },
       orderBy: { scheduledAt: 'asc' },

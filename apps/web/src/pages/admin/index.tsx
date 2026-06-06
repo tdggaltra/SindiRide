@@ -2,8 +2,8 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Users, Car, Clock, CheckCircle, X, Eye, TrendingUp, Gauge,
-  Plus, Shield, ShieldOff, Star, MapPin, Trash2, Pencil,
+  Users, Car, Clock, CheckCircle, X, TrendingUp, Gauge,
+  Plus, Shield, ShieldOff, Star, MapPin, Trash2,
   Map, Bell, Zap, Info,
 } from "lucide-react";
 import {
@@ -16,6 +16,9 @@ import {
   useAdminMotoristas,
   useCreateMotorista,
   useToggleBlockMotorista,
+  useDeleteMotorista,
+  useToggleBlockSindico,
+  useDeleteSindico,
   useAdminRoutes,
   useCreateAdminRoute,
   useUpdateAdminRoute,
@@ -234,9 +237,13 @@ export function AdminDashboardPage() {
 export function AdminSindicosPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [page, setPage] = useState(1);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const { data, isLoading } = useSindicos(statusFilter || undefined, page);
   const approve = useApproveSindico();
-  const reject = useRejectSindico();
+  const reject  = useRejectSindico();
+  const block   = useToggleBlockSindico();
+  const remove  = useDeleteSindico();
 
   const statusOptions = [
     { label: "Todos", value: "" },
@@ -340,19 +347,82 @@ export function AdminSindicosPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {u.status === "PENDENTE" && (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => approve.mutate(u.id)}
-                          className="w-7 h-7 rounded-lg border border-green-200 text-green-600 flex items-center justify-center hover:bg-green-50"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                        </button>
-                        <button className="w-7 h-7 rounded-lg border border-red-200 text-red-500 flex items-center justify-center hover:bg-red-50">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex gap-1 items-center">
+                      {u.status === "PENDENTE" && rejectingId === u.id ? (
+                        <>
+                          <input
+                            className="input-field text-xs h-7 w-28"
+                            placeholder="Motivo..."
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => {
+                              reject.mutate({ userId: u.id, reason: rejectReason });
+                              setRejectingId(null);
+                              setRejectReason("");
+                            }}
+                            className="w-7 h-7 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => { setRejectingId(null); setRejectReason(""); }}
+                            className="w-7 h-7 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {u.status === "PENDENTE" && (
+                            <>
+                              <button
+                                onClick={() => approve.mutate(u.id)}
+                                title="Aprovar"
+                                className="w-7 h-7 rounded-lg border border-green-200 text-green-600 flex items-center justify-center hover:bg-green-50"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setRejectingId(u.id)}
+                                title="Rejeitar"
+                                className="w-7 h-7 rounded-lg border border-red-200 text-red-500 flex items-center justify-center hover:bg-red-50"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                          {(u.status === "ATIVO" || u.status === "BLOQUEADO") && (
+                            <button
+                              onClick={() => block.mutate(u.id)}
+                              title={u.status === "ATIVO" ? "Bloquear" : "Desbloquear"}
+                              className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${
+                                u.status === "ATIVO"
+                                  ? "border-red-200 text-red-500 hover:bg-red-50"
+                                  : "border-green-200 text-green-600 hover:bg-green-50"
+                              }`}
+                            >
+                              {u.status === "ATIVO"
+                                ? <ShieldOff className="w-3.5 h-3.5" />
+                                : <Shield className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Remover ${u.name}? Esta ação não pode ser desfeita.`)) {
+                                remove.mutate(u.id)
+                              }
+                            }}
+                            title="Remover"
+                            className="w-7 h-7 rounded-lg border border-red-200 text-red-400 flex items-center justify-center hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -401,7 +471,7 @@ export function AdminRidesPage() {
                 "Destino",
                 "Horário",
                 "Km",
-                "",
+                "Avaliação",
               ].map((h) => (
                 <th
                   key={h}
@@ -457,9 +527,22 @@ export function AdminRidesPage() {
                       : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <button className="text-brand-600 hover:text-brand-800">
-                      <Eye className="w-4 h-4" />
-                    </button>
+                    {ride.rating ? (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-0.5">
+                          {[1,2,3,4,5].map((s: number) => (
+                            <Star key={s} className={`w-3 h-3 ${s <= ride.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                          ))}
+                        </div>
+                        {ride.ratingComment && (
+                          <p className="text-[10px] text-gray-400 max-w-[140px] truncate" title={ride.ratingComment}>
+                            {ride.ratingComment}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-300 text-xs">—</span>
+                    )}
                   </td>
                 </tr>
               ))
@@ -489,7 +572,8 @@ export function AdminMotoristasPage() {
   const [page, setPage] = useState(1)
   const { data, isLoading } = useAdminMotoristas(page)
   const create = useCreateMotorista()
-  const block = useToggleBlockMotorista()
+  const block  = useToggleBlockMotorista()
+  const remove = useDeleteMotorista()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(MOTORISTA_EMPTY)
 
@@ -602,17 +686,30 @@ export function AdminMotoristasPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => block.mutate(m.user?.id)}
-                      title={m.user?.status === 'ATIVO' ? 'Bloquear' : 'Desbloquear'}
-                      className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${
-                        m.user?.status === 'ATIVO'
-                          ? 'border-red-200 text-red-500 hover:bg-red-50'
-                          : 'border-green-200 text-green-600 hover:bg-green-50'
-                      }`}
-                    >
-                      {m.user?.status === 'ATIVO' ? <ShieldOff className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => block.mutate(m.userId)}
+                        title={m.user?.status === 'ATIVO' ? 'Bloquear' : 'Desbloquear'}
+                        className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${
+                          m.user?.status === 'ATIVO'
+                            ? 'border-red-200 text-red-500 hover:bg-red-50'
+                            : 'border-green-200 text-green-600 hover:bg-green-50'
+                        }`}
+                      >
+                        {m.user?.status === 'ATIVO' ? <ShieldOff className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Remover ${m.user?.name}? Esta ação não pode ser desfeita.`)) {
+                            remove.mutate(m.userId)
+                          }
+                        }}
+                        title="Remover"
+                        className="w-7 h-7 rounded-lg border border-red-200 text-red-400 flex items-center justify-center hover:bg-red-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

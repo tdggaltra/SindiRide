@@ -27,6 +27,10 @@ seed:
 studio:
 	docker compose exec api npx prisma studio
 
+reload-api:
+	touch apps/api/src/server.ts
+	@echo "🔄 API recarregando..."
+
 setup:
 	docker compose up -d --build && sleep 8 && docker compose exec api npx prisma migrate dev --name init && docker compose exec api npx prisma db seed
 	@echo "✅ Ambiente pronto!"

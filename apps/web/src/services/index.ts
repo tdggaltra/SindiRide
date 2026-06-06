@@ -160,6 +160,19 @@ export const adminService = {
     const { data } = await api.patch(`/api/admin/motoristas/${userId}/block`)
     return data
   },
+  deleteMotorista: async (userId: string) => {
+    const { data } = await api.delete(`/api/admin/motoristas/${userId}`)
+    return data
+  },
+
+  toggleBlockSindico: async (userId: string) => {
+    const { data } = await api.patch(`/api/admin/sindicos/${userId}/block`)
+    return data
+  },
+  deleteSindico: async (userId: string) => {
+    const { data } = await api.delete(`/api/admin/sindicos/${userId}`)
+    return data
+  },
 
   exportRides: async (params?: Record<string, unknown>) => {
     const { data } = await api.get('/api/admin/rides', { params: { limit: 1000, ...params } })

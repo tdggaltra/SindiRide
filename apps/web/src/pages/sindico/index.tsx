@@ -166,6 +166,27 @@ export function RideHistoryPage() {
   )
 }
 
+// ── Haversine fallback para preview de rota quando OSRM indisponível ──────
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function routeFallback(origin: AddressResult, dest: AddressResult) {
+  const km  = Math.round(haversineKm(origin.lat, origin.lng, dest.lat, dest.lng) * 1.4 * 10) / 10
+  const min = Math.max(1, Math.round(km / 30 * 60))
+  return {
+    distanceKm:   km,
+    durationMin:  min,
+    distanceText: `~${km} km`,
+    durationText: `~${min} min`,
+    polyline: JSON.stringify([[origin.lat, origin.lng], [dest.lat, dest.lng]]),
+  }
+}
+
 // ── NewRide ────────────────────────────────────────────────────────────────
 export function NewRidePage() {
   const createRide = useCreateRide()
@@ -182,6 +203,8 @@ export function NewRidePage() {
   const [originError, setOriginError] = useState('')
   const [notes, setNotes] = useState('')
   const [routePreview, setRoutePreview] = useState<{
+    distanceKm:   number
+    durationMin:  number
     distanceText: string
     durationText: string
     polyline: string
@@ -220,24 +243,41 @@ export function NewRidePage() {
       })
   }, [sindico?.condominiumAddress])
 
-  // Calculate route preview via OSRM whenever origin + destination are known
+  // Calculate route preview via OSRM with 8s timeout; fallback to Haversine estimate
   useEffect(() => {
     if (!origin?.lat || !origin?.lng || !dest) return
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8_000)
+
     const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${dest.lng},${dest.lat}?overview=full&geometries=geojson`
-    fetch(url)
+
+    fetch(url, { signal: controller.signal })
       .then(r => r.json())
       .then((data: { code: string; routes: Array<{ distance: number; duration: number; geometry: { coordinates: [number, number][] } }> }) => {
-        if (data.code !== 'Ok' || !data.routes.length) return
-        const route = data.routes[0]
-        // Flip OSRM [lng, lat] → [lat, lng] for Leaflet
+        clearTimeout(timer)
+        if (data.code !== 'Ok' || !data.routes.length) {
+          setRoutePreview(routeFallback(origin, dest))
+          return
+        }
+        const route    = data.routes[0]
+        const distKm   = Math.round((route.distance / 1000) * 10) / 10
+        const durMin   = Math.round(route.duration / 60)
         const positions = route.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
         setRoutePreview({
-          distanceText: `${(route.distance / 1000).toFixed(1)} km`,
-          durationText: `${Math.round(route.duration / 60)} min`,
+          distanceKm:   distKm,
+          durationMin:  durMin,
+          distanceText: `${distKm} km`,
+          durationText:  `${durMin} min`,
           polyline: JSON.stringify(positions),
         })
       })
-      .catch(() => {})
+      .catch(() => {
+        clearTimeout(timer)
+        setRoutePreview(routeFallback(origin, dest))
+      })
+
+    return () => { clearTimeout(timer); controller.abort() }
   }, [origin?.lat, origin?.lng, dest?.lat, dest?.lng])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -287,6 +327,12 @@ export function NewRidePage() {
       scheduledAt,
       isImmediate,
       notes,
+      // Envia dados de rota calculados no browser para evitar recálculo no servidor
+      ...(routePreview && {
+        clientDistanceKm:  routePreview.distanceKm,
+        clientDurationMin: routePreview.durationMin,
+        clientPolyline:    routePreview.polyline,
+      }),
     } as any)
   }
 

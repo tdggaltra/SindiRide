@@ -126,6 +126,7 @@ export function MotoristaRidesPage() {
   const [tab, setTab] = useState<'pending' | 'history'>('pending')
   const [histPage, setHistPage] = useState(1)
 
+  const { data: motorista } = useMotoristaMe()
   const { data: pendingRides, isLoading: pendingLoading } = usePendingRides()
   const { data: histData,     isLoading: histLoading     } = useMotoristaRideHistory(histPage)
   const accept = useAcceptRide()
@@ -163,6 +164,12 @@ export function MotoristaRidesPage() {
       {tab === 'pending' && (
         pendingLoading ? (
           <div className="flex justify-center py-12"><Spinner /></div>
+        ) : !motorista?.isAvailable ? (
+          <div className="text-center py-12 text-gray-400">
+            <Power className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p className="text-sm font-medium">Você está offline</p>
+            <p className="text-xs mt-1">Fique online para ver e aceitar corridas</p>
+          </div>
         ) : !pendingRides?.length ? (
           <div className="text-center py-12 text-gray-400">
             <Car className="w-10 h-10 mx-auto mb-3 opacity-40" />
@@ -252,6 +259,19 @@ export function MotoristaRidesPage() {
                       <span>{ride.estimatedDistanceKm} km</span>
                     )}
                   </div>
+                  {ride.rating && (
+                    <div className="pt-2 border-t border-gray-100 mt-1">
+                      <div className="flex items-center gap-1 mb-1">
+                        {[1,2,3,4,5].map(s => (
+                          <Star key={s} className={`w-3.5 h-3.5 ${s <= ride.rating! ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                        ))}
+                        <span className="text-xs text-gray-400 ml-1">{ride.rating}/5</span>
+                      </div>
+                      {ride.ratingComment && (
+                        <p className="text-xs text-gray-500 italic">"{ride.ratingComment}"</p>
+                      )}
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>
@@ -449,8 +469,11 @@ export function MotoristaActiveRidePage() {
 export function MotoristaProfilePage() {
   const { user } = useAuthStore()
   const { data: motorista, isLoading } = useMotoristaMe()
+  const { data: histData } = useMotoristaRideHistory(1)
   const toggle = useToggleAvailability()
   const logout = useLogout()
+
+  const recentRatings = histData?.data?.filter(r => r.rating) ?? []
 
   const initials = user?.name?.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() ?? 'MO'
 
@@ -525,6 +548,37 @@ export function MotoristaProfilePage() {
               </div>
             </div>
           </Card>
+
+          {/* Avaliações recentes */}
+          {recentRatings.length > 0 && (
+            <Card className="mb-3">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+                Avaliações recentes
+              </p>
+              <div className="flex flex-col gap-3">
+                {recentRatings.slice(0, 5).map(ride => (
+                  <div key={ride.id} className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-0.5">
+                        {[1,2,3,4,5].map(s => (
+                          <Star key={s} className={`w-3.5 h-3.5 ${s <= ride.rating! ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                        ))}
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {format(new Date(ride.scheduledAt), "dd/MM/yy", { locale: ptBR })}
+                      </span>
+                    </div>
+                    {ride.ratingComment && (
+                      <p className="text-xs text-gray-500 italic leading-relaxed">
+                        "{ride.ratingComment}"
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400">{ride.sindico?.user?.name ?? ''}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </>
       )}
 

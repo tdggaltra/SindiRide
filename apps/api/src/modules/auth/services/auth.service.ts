@@ -15,9 +15,10 @@ export class AuthService {
     if (!user) throw new UnauthorizedError('CPF ou senha incorretos')
     const match = await compare(data.password, user.password)
     if (!match) throw new UnauthorizedError('CPF ou senha incorretos')
-    if (user.status === UserStatus.PENDENTE)  throw new ForbiddenError('Cadastro aguardando aprovação')
-    if (user.status === UserStatus.BLOQUEADO) throw new ForbiddenError('Conta bloqueada')
-    if (user.status === UserStatus.REJEITADO) throw new ForbiddenError('Cadastro não aprovado')
+    if (user.deletedAt)                        throw new ForbiddenError('Conta não encontrada')
+    if (user.status === UserStatus.PENDENTE)   throw new ForbiddenError('Cadastro aguardando aprovação')
+    if (user.status === UserStatus.BLOQUEADO)  throw new ForbiddenError('Conta bloqueada')
+    if (user.status === UserStatus.REJEITADO)  throw new ForbiddenError('Cadastro não aprovado')
 
     const payload = { sub: user.id, role: user.role, sindicoId: user.sindico?.id, motoristaId: user.motorista?.id }
     const accessToken  = this.app.jwt.sign(payload)
@@ -25,35 +26,43 @@ export class AuthService {
 
     return {
       accessToken, refreshToken,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, sindicoId: user.sindico?.id, motoristaId: user.motorista?.id },
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, sindicoId: user.sindico?.id, motoristaId: user.motorista?.id },
     }
   }
 
   async register(data: RegisterInput) {
     const existing = await this.app.prisma.user.findFirst({
-      where: { OR: [{ email: data.email }, { cpf: data.cpf }] },
+      where: { OR: [{ email: data.email }, { cpf: data.cpf }], deletedAt: null },
     })
     if (existing?.email === data.email) throw new ConflictError('E-mail já cadastrado')
     if (existing?.cpf  === data.cpf)   throw new ConflictError('CPF já cadastrado')
 
     const passwordHash = await hash(data.password, 10)
-    const user = await this.app.prisma.user.create({
-      data: {
-        name: data.name, email: data.email, cpf: data.cpf,
-        phone: data.phone, password: passwordHash,
-        role: Role.SINDICO, status: UserStatus.PENDENTE,
-        sindico: {
-          create: {
-            condominiumName: data.condominiumName,
-            condominiumAddress: data.condominiumAddress,
-            condominiumDistrict: data.condominiumDistrict,
-            condominiumZip: data.condominiumZip,
-            mandateType: data.mandateType as any,
+    try {
+      const user = await this.app.prisma.user.create({
+        data: {
+          name: data.name, email: data.email, cpf: data.cpf,
+          phone: data.phone, password: passwordHash,
+          role: Role.SINDICO, status: UserStatus.PENDENTE,
+          sindico: {
+            create: {
+              condominiumName: data.condominiumName,
+              condominiumAddress: data.condominiumAddress,
+              condominiumDistrict: data.condominiumDistrict,
+              condominiumZip: data.condominiumZip,
+              mandateType: data.mandateType as any,
+            },
           },
         },
-      },
-    })
-    return { message: 'Cadastro realizado. Aguarde a aprovação do administrador.', userId: user.id }
+      })
+      return { message: 'Cadastro realizado. Aguarde a aprovação do administrador.', userId: user.id }
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        const field = err?.meta?.target?.[0]
+        throw new ConflictError(field === 'cpf' ? 'CPF já cadastrado' : 'E-mail já cadastrado')
+      }
+      throw err
+    }
   }
 
   async refresh(refreshToken: string) {
