@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { AddressAutocomplete, AddressResult } from '@/components/map/AddressAutocomplete'
 import { MapView } from '@/components/map/MapView'
+import { buildScheduledAt } from '@/lib/scheduling'
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
 export function DashboardPage() {
@@ -295,25 +296,12 @@ export function NewRidePage() {
       return
     }
 
-    let scheduledAt: string
-    if (isImmediate) {
-      scheduledAt = new Date().toISOString()
-    } else {
-      if (!date || !time) {
-        setScheduleError('Preencha a data e o horário.')
-        return
-      }
-      const combined = new Date(`${date}T${time}:00`)
-      if (isNaN(combined.getTime())) {
-        setScheduleError('Data ou horário inválido.')
-        return
-      }
-      if (combined <= new Date()) {
-        setScheduleError('O agendamento deve ser para uma data futura.')
-        return
-      }
-      scheduledAt = combined.toISOString()
+    const schedule = buildScheduledAt(date, time, isImmediate)
+    if (schedule.error) {
+      setScheduleError(schedule.error)
+      return
     }
+    const scheduledAt = schedule.scheduledAt
 
     createRide.mutate({
       originAddress: origin.address,

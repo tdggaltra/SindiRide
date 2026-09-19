@@ -14,11 +14,29 @@ concurrency:
 jobs:
   # ── API: type-check ──────────────────────────────────────────────────────────
   check-api:
-    name: "API — type-check"
+    name: "API — type-check + test"
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/api
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_USER: sindiride
+          POSTGRES_PASSWORD: sindiride
+          POSTGRES_DB: sindiride_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sindiride"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://sindiride:sindiride@localhost:5432/sindiride_test
 
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +55,9 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
 
   # ── Web: type-check + build ──────────────────────────────────────────────────
   check-web:
@@ -60,6 +81,9 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
 
       - name: Build (Vite)
         run: npm run build

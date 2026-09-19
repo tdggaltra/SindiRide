@@ -172,7 +172,8 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
       include: { sindico: { select: { userId: true } }, motorista: { select: { userId: true } } },
     })
     if (!ride) throw new NotFoundError('Corrida')
-    if (![RideStatus.AGENDADA, RideStatus.ACEITA].includes(ride.status)) throw new UnprocessableError('Corrida não pode ser cancelada')
+    const cancellableStatuses: RideStatus[] = [RideStatus.AGENDADA, RideStatus.ACEITA]
+    if (!cancellableStatuses.includes(ride.status)) throw new UnprocessableError('Corrida não pode ser cancelada')
     let cancelledBy: CancelledBy = CancelledBy.ADMIN
     if (req.user.role === 'SINDICO')   cancelledBy = CancelledBy.SINDICO
     if (req.user.role === 'MOTORISTA') cancelledBy = CancelledBy.MOTORISTA

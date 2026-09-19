@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { authService, authExtraService, rideService, notificationService, adminService, sindicoService, routeService, motoristaService } from '@/services'
 import { requestFcmToken } from '@/services/fcm'
+import { buildRidesCSV } from '@/lib/csv'
 import { Ride } from '@/types'
 
 
@@ -278,22 +279,7 @@ export function useUpdateAdminRoute() {
 }
 
 function downloadCSV(rides: any[]) {
-  const headers = ['ID', 'Status', 'Síndico', 'Motorista', 'Origem', 'Destino', 'Km', 'Duração (min)', 'Agendado em', 'Concluído em']
-  const rows = rides.map((r: any) => [
-    r.id,
-    r.status,
-    r.sindico?.user?.name ?? '',
-    r.motorista?.user?.name ?? '',
-    r.originAddress,
-    r.destAddress,
-    r.estimatedDistanceKm ?? '',
-    r.estimatedDurationMin ?? '',
-    r.scheduledAt ? new Date(r.scheduledAt).toLocaleString('pt-BR') : '',
-    r.finishedAt  ? new Date(r.finishedAt).toLocaleString('pt-BR')  : '',
-  ])
-  const csv = [headers, ...rows]
-    .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-    .join('\n')
+  const csv = buildRidesCSV(rides)
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')

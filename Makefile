@@ -34,3 +34,12 @@ reload-api:
 setup:
 	docker compose up -d --build && sleep 8 && docker compose exec api npx prisma migrate dev --name init && docker compose exec api npx prisma db seed
 	@echo "✅ Ambiente pronto!"
+
+test-db:
+	-docker compose exec postgres psql -U sindiride -d postgres -c "CREATE DATABASE sindiride_test"
+
+test-api:
+	docker compose exec -e DATABASE_URL=postgresql://sindiride:sindiride@123@postgres:5432/sindiride_test api npm test
+
+test-web:
+	cd apps/web && npm test
