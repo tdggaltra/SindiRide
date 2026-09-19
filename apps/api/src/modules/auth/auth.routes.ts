@@ -4,16 +4,37 @@ import { hash } from 'bcryptjs'
 import { AuthService } from './services/auth.service'
 import { loginSchema, registerSchema, refreshSchema } from './schemas/auth.schema'
 import { BadRequestError } from '../../shared/errors/app.errors'
+import { rateLimitErrorResponseBuilder } from '../../shared/utils/rate-limit'
+
+// Em teste, os testes de integração fazem dezenas de logins no mesmo "IP"
+// (127.0.0.1 do app.inject) só pra montar cenários de negócio — um limite de
+// produção quebraria esses testes sem relação nenhuma com força bruta.
+// Usa VITEST (setado pelo próprio test runner) em vez de NODE_ENV porque o
+// container da API roda com NODE_ENV=development mesmo durante os testes
+// (docker-compose.yml define isso pro modo dev normal).
+const isTest = process.env.VITEST === 'true'
+const LOGIN_RATE_LIMIT = {
+  max: isTest ? 1000 : 5,
+  timeWindow: '1 minute',
+  errorResponseBuilder: rateLimitErrorResponseBuilder,
+}
+const REGISTER_RATE_LIMIT = {
+  max: isTest ? 1000 : 3,
+  timeWindow: '1 hour',
+  errorResponseBuilder: rateLimitErrorResponseBuilder,
+}
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   const svc = new AuthService(app)
 
-  app.post('/login', async (req, reply) => {
+  // Limite apertado contra força bruta de senha (por IP)
+  app.post('/login', { config: { rateLimit: LOGIN_RATE_LIMIT } }, async (req, reply) => {
     const data = loginSchema.parse(req.body)
     return reply.send(await svc.login(data))
   })
 
-  app.post('/register', async (req, reply) => {
+  // Limite apertado contra cadastros em massa/spam (por IP)
+  app.post('/register', { config: { rateLimit: REGISTER_RATE_LIMIT } }, async (req, reply) => {
     const data = registerSchema.parse(req.body)
     return reply.status(201).send(await svc.register(data))
   })

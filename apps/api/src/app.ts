@@ -1,6 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
+import rateLimit from '@fastify/rate-limit'
+import { rateLimitErrorResponseBuilder } from './shared/utils/rate-limit'
 import { prismaPlugin } from './shared/plugins/prisma.plugin'
 import { jwtPlugin } from './shared/plugins/jwt.plugin'
 import { socketPlugin } from './shared/plugins/socket.plugin'
@@ -19,6 +21,15 @@ export async function buildApp() {
   })
 await app.register(helmet, { contentSecurityPolicy: false })
   await app.register(cors, { origin: true, credentials: true })
+
+  // Limite global (proteção geral contra abuso); rotas sensíveis (login,
+  // registro) definem limites mais estritos via config.rateLimit na própria rota.
+  await app.register(rateLimit, {
+    global: true,
+    max: 200,
+    timeWindow: '1 minute',
+    errorResponseBuilder: rateLimitErrorResponseBuilder,
+  })
 
   await app.register(prismaPlugin)
   await app.register(jwtPlugin)
