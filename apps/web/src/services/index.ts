@@ -160,6 +160,10 @@ export const adminService = {
     const { data } = await api.patch(`/api/admin/motoristas/${userId}/block`)
     return data
   },
+  verifyMotoristaDocuments: async (userId: string) => {
+    const { data } = await api.patch(`/api/admin/motoristas/${userId}/verify-documents`)
+    return data
+  },
   deleteMotorista: async (userId: string) => {
     const { data } = await api.delete(`/api/admin/motoristas/${userId}`)
     return data

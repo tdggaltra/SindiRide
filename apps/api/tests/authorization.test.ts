@@ -48,7 +48,7 @@ describe('Autorização por papel', () => {
       payload: {
         originAddress: 'Rua A, 1', originDistrict: 'Centro', originLat: -23.31, originLng: -51.16,
         destAddress: 'Rua B, 2', destDistrict: 'Zona Sul', destLat: -23.33, destLng: -51.18,
-        scheduledAt: new Date(Date.now() + 3_600_000).toISOString(), isImmediate: false,
+        scheduledAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
       },
     })
 

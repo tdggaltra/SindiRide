@@ -20,6 +20,11 @@ const rideBasePayload = {
   clientDistanceKm: 5, clientDurationMin: 12,
 }
 
+// Não há mais corrida imediata — toda corrida precisa de pelo menos 5h de
+// antecedência (ver MIN_LEAD_TIME_MS em ride.routes.ts). 6h dá folga segura
+// contra flakiness de tempo de execução do teste.
+const validScheduledAt = () => new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+
 describe('Rides', () => {
   let app: FastifyInstance
 
@@ -41,12 +46,11 @@ describe('Rides', () => {
     const sindicoToken = await loginAs(app, sindicoUser.cpf, sindicoPassword)
     const motoristaToken = await loginAs(app, motoristaUser.cpf, motoristaPassword)
 
-    const scheduledAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
     const created = await app.inject({
       method: 'POST',
       url: '/api/rides',
       headers: auth(sindicoToken),
-      payload: { ...rideBasePayload, scheduledAt, isImmediate: false },
+      payload: { ...rideBasePayload, scheduledAt: validScheduledAt() },
     })
 
     return { rideId: created.json().id as string, sindicoToken, motoristaToken }
@@ -55,13 +59,12 @@ describe('Rides', () => {
   it('síndico cria corrida agendada com sucesso', async () => {
     const { user, password } = await createSindico(app.prisma)
     const token = await loginAs(app, user.cpf, password)
-    const scheduledAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
 
     const res = await app.inject({
       method: 'POST',
       url: '/api/rides',
       headers: auth(token),
-      payload: { ...rideBasePayload, scheduledAt, isImmediate: false },
+      payload: { ...rideBasePayload, scheduledAt: validScheduledAt() },
     })
 
     expect(res.statusCode).toBe(201)
@@ -77,43 +80,41 @@ describe('Rides', () => {
       method: 'POST',
       url: '/api/rides',
       headers: auth(token),
-      payload: { ...rideBasePayload, scheduledAt, isImmediate: false },
+      payload: { ...rideBasePayload, scheduledAt },
     })
 
     expect(res.statusCode).toBe(400)
   })
 
-  it('isImmediate ignora o scheduledAt enviado pelo cliente e usa o horário do servidor', async () => {
+  it('rejeita agendamento com menos de 5 horas de antecedência', async () => {
     const { user, password } = await createSindico(app.prisma)
     const token = await loginAs(app, user.cpf, password)
-    const bogusPast = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const scheduledAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
 
     const res = await app.inject({
       method: 'POST',
       url: '/api/rides',
       headers: auth(token),
-      payload: { ...rideBasePayload, scheduledAt: bogusPast, isImmediate: true },
+      payload: { ...rideBasePayload, scheduledAt },
     })
 
-    expect(res.statusCode).toBe(201)
-    const scheduledAt = new Date(res.json().scheduledAt).getTime()
-    expect(scheduledAt).toBeGreaterThan(Date.now() - 5_000)
+    expect(res.statusCode).toBe(400)
   })
 
   it('rejeita segunda corrida ativa do mesmo síndico', async () => {
     const { user, password } = await createSindico(app.prisma)
     const token = await loginAs(app, user.cpf, password)
-    const scheduledAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    const scheduledAt = validScheduledAt()
 
     const first = await app.inject({
       method: 'POST', url: '/api/rides', headers: auth(token),
-      payload: { ...rideBasePayload, scheduledAt, isImmediate: false },
+      payload: { ...rideBasePayload, scheduledAt },
     })
     expect(first.statusCode).toBe(201)
 
     const second = await app.inject({
       method: 'POST', url: '/api/rides', headers: auth(token),
-      payload: { ...rideBasePayload, scheduledAt, isImmediate: false },
+      payload: { ...rideBasePayload, scheduledAt },
     })
     expect(second.statusCode).toBe(422)
   })
@@ -181,5 +182,19 @@ describe('Rides', () => {
       method: 'PATCH', url: `/api/rides/${rideId}/cancel`, headers: auth(sindicoToken), payload: {},
     })
     expect(cancelled.statusCode).toBe(422)
+  })
+
+  it('GET /:id traz vínculo, verificação e corridas realizadas do motorista', async () => {
+    const { rideId, sindicoToken, motoristaToken } = await createScheduledRide()
+    await app.inject({ method: 'PATCH', url: `/api/rides/${rideId}/accept`, headers: auth(motoristaToken) })
+
+    const res = await app.inject({ method: 'GET', url: `/api/rides/${rideId}`, headers: auth(sindicoToken) })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.motorista).toHaveProperty('affiliation')
+    expect(body.motorista).toHaveProperty('documentsVerifiedAt')
+    expect(body.motorista.completedRidesCount).toBe(0)
+    expect(body.motorista.user).toHaveProperty('avatarUrl')
+    expect(body.motorista.user).toHaveProperty('createdAt')
   })
 })

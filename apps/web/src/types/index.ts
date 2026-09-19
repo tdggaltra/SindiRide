@@ -17,6 +17,7 @@ export interface User {
   role: Role
   status: UserStatus
   avatarUrl?: string
+  createdAt: string
   sindicoId?: string
   motoristaId?: string
 }
@@ -45,7 +46,10 @@ export interface Motorista {
   isAvailable: boolean
   ratingAvg: number
   ratingCount: number
-  user: Pick<User, 'name' | 'phone'>
+  affiliation?: string
+  documentsVerifiedAt?: string
+  completedRidesCount?: number
+  user: Pick<User, 'name' | 'phone' | 'avatarUrl' | 'createdAt'>
 }
 
 // ── Corrida ────────────────────────────────────────────────────────────────

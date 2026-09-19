@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Users, Car, Clock, CheckCircle, X, TrendingUp, Gauge,
-  Plus, Shield, ShieldOff, Star, MapPin, Trash2,
+  Plus, Shield, ShieldOff, ShieldCheck, Star, MapPin, Trash2,
   Map, Bell, Zap, Info,
 } from "lucide-react";
 import {
@@ -16,6 +16,7 @@ import {
   useAdminMotoristas,
   useCreateMotorista,
   useToggleBlockMotorista,
+  useVerifyMotoristaDocuments,
   useDeleteMotorista,
   useToggleBlockSindico,
   useDeleteSindico,
@@ -566,6 +567,7 @@ const MOTORISTA_EMPTY = {
   vehicleBrand: '', vehicleModel: '', vehicleColor: '', vehiclePlate: '',
   vehicleYear: new Date().getFullYear(),
   cnhNumber: '', cnhCategory: 'B', cnhExpiry: '',
+  affiliation: '',
 }
 
 export function AdminMotoristasPage() {
@@ -573,6 +575,7 @@ export function AdminMotoristasPage() {
   const { data, isLoading } = useAdminMotoristas(page)
   const create = useCreateMotorista()
   const block  = useToggleBlockMotorista()
+  const verify = useVerifyMotoristaDocuments()
   const remove = useDeleteMotorista()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(MOTORISTA_EMPTY)
@@ -582,7 +585,7 @@ export function AdminMotoristasPage() {
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
     create.mutate(
-      { ...form, vehicleYear: Number(form.vehicleYear) },
+      { ...form, vehicleYear: Number(form.vehicleYear), affiliation: form.affiliation || undefined },
       { onSuccess: () => { setShowForm(false); setForm(MOTORISTA_EMPTY) } },
     )
   }
@@ -623,6 +626,13 @@ export function AdminMotoristasPage() {
                 <input className="input-field" placeholder="Placa"  value={form.vehiclePlate} onChange={e => set('vehiclePlate', e.target.value)} required />
                 <input className="input-field" type="number" placeholder="Ano" value={form.vehicleYear} onChange={e => set('vehicleYear', e.target.value)} required />
               </div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-1">Vínculo</p>
+              <input
+                className="input-field"
+                placeholder="Ex: Autônomo, ou nome da empresa terceirizada (opcional)"
+                value={form.affiliation}
+                onChange={e => set('affiliation', e.target.value)}
+              />
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-1">CNH</p>
               <div className="grid grid-cols-2 gap-3">
                 <input className="input-field" placeholder="Número CNH"    value={form.cnhNumber}   onChange={e => set('cnhNumber', e.target.value)}   required />
@@ -647,16 +657,16 @@ export function AdminMotoristasPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              {['Motorista', 'CPF', 'Veículo', 'Placa', 'Avaliação', 'Status', ''].map(h => (
+              {['Motorista', 'CPF', 'Veículo', 'Placa', 'Avaliação', 'Verificado', 'Status', ''].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} className="text-center py-8"><Spinner className="w-5 h-5 mx-auto" /></td></tr>
+              <tr><td colSpan={8} className="text-center py-8"><Spinner className="w-5 h-5 mx-auto" /></td></tr>
             ) : !data?.motoristas?.length ? (
-              <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-sm">Nenhum motorista cadastrado</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-gray-400 text-sm">Nenhum motorista cadastrado</td></tr>
             ) : (
               data.motoristas.map((m: any) => (
                 <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50 last:border-0">
@@ -679,6 +689,20 @@ export function AdminMotoristasPage() {
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
                       {m.ratingAvg?.toFixed(1) ?? '—'}
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => verify.mutate(m.userId)}
+                      title={m.documentsVerifiedAt ? 'Remover verificação' : 'Marcar documentos como verificados'}
+                      className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${
+                        m.documentsVerifiedAt
+                          ? 'border-brand-200 text-brand-700 bg-brand-50'
+                          : 'border-gray-200 text-gray-400 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      {m.documentsVerifiedAt ? 'Verificado' : 'Verificar'}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <span className={m.user?.status === 'ATIVO' ? 'badge-success' : 'badge-danger'}>

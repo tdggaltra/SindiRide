@@ -80,6 +80,8 @@ refreshTokens      RefreshToken[]
   approvedAt    DateTime?
   approvedUsers User[]  @relation("ApprovedBy")
 
+  verifiedMotoristas Motorista[] @relation("MotoristaDocsVerified")
+
   @@index([email])
   @@index([cpf])
   @@index([role, status])
@@ -121,6 +123,13 @@ model Motorista {
   lastSeenAt     DateTime?
   ratingAvg      Float     @default(0)
   ratingCount    Int       @default(0)
+
+  // Vínculo/empresa (ex: "Autônomo" ou nome da terceirizada) e verificação
+  // de documentos (CNH, antecedentes) feita pelo admin no cadastro.
+  affiliation           String?
+  documentsVerifiedAt   DateTime?
+  documentsVerifiedById String?
+  documentsVerifiedBy   User?     @relation("MotoristaDocsVerified", fields: [documentsVerifiedById], references: [id])
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   rides Ride[]

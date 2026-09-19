@@ -181,6 +181,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       cnhNumber:    z.string().min(1),
       cnhCategory:  z.string().min(1),
       cnhExpiry:    z.coerce.date(),
+      affiliation:  z.string().optional(),
     })
     const data = schema.parse(req.body)
 
@@ -203,11 +204,25 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
             vehicleColor: data.vehicleColor, vehiclePlate: data.vehiclePlate,
             vehicleYear:  data.vehicleYear,  cnhNumber:    data.cnhNumber,
             cnhCategory:  data.cnhCategory,  cnhExpiry:    data.cnhExpiry,
+            affiliation:  data.affiliation,
           },
         },
       },
     })
     return reply.status(201).send({ message: 'Motorista cadastrado', userId: user.id })
+  })
+
+  app.patch('/motoristas/:userId/verify-documents', adminOnly, async (req, reply) => {
+    const { userId } = req.params as { userId: string }
+    const motorista = await app.prisma.motorista.findUnique({ where: { userId } })
+    if (!motorista) throw new NotFoundError('Motorista')
+    const updated = await app.prisma.motorista.update({
+      where: { userId },
+      data: motorista.documentsVerifiedAt
+        ? { documentsVerifiedAt: null, documentsVerifiedById: null }
+        : { documentsVerifiedAt: new Date(), documentsVerifiedById: req.user.sub },
+    })
+    return reply.send({ documentsVerifiedAt: updated.documentsVerifiedAt })
   })
 
   app.patch('/motoristas/:userId/block', adminOnly, async (req, reply) => {

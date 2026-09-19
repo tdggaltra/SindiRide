@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Plus, Car, Calendar, Clock, MapPin, Phone, MessageCircle, CheckCircle, Star, X, LogOut, Navigation } from 'lucide-react'
-import { format } from 'date-fns'
+import { Plus, Car, Calendar, Clock, MapPin, Phone, MessageCircle, CheckCircle, Star, X, LogOut, Navigation, ShieldCheck } from 'lucide-react'
+import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAuthStore } from '@/store/auth.store'
 import { useRides, useRide, useCreateRide, useCancelRide, useRateRide, useSindicoMe, useLogout, useRoutes } from '@/hooks'
@@ -10,7 +10,19 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { AddressAutocomplete, AddressResult } from '@/components/map/AddressAutocomplete'
 import { MapView } from '@/components/map/MapView'
-import { buildScheduledAt } from '@/lib/scheduling'
+import { buildScheduledAt, MIN_LEAD_TIME_HOURS } from '@/lib/scheduling'
+
+// Pré-preenche data/hora com uma folga confortável sobre a antecedência
+// mínima, pra reduzir a chance do síndico digitar um horário que vai dar erro.
+function defaultScheduleDateTime() {
+  const d = new Date(Date.now() + (MIN_LEAD_TIME_HOURS * 60 + 30) * 60 * 1000)
+  d.setMinutes(Math.ceil(d.getMinutes() / 30) * 30, 0, 0)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  }
+}
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
 export function DashboardPage() {
@@ -194,9 +206,8 @@ export function NewRidePage() {
   const { data: sindico } = useSindicoMe()
   const location = useLocation()
   const prefilled = location.state as AddressResult | null
-  const [isImmediate, setIsImmediate] = useState(false)
-  const [date, setDate] = useState('')
-  const [time, setTime] = useState('10:00')
+  const [date, setDate] = useState(() => defaultScheduleDateTime().date)
+  const [time, setTime] = useState(() => defaultScheduleDateTime().time)
   const [scheduleError, setScheduleError] = useState('')
   const [dest, setDest] = useState<AddressResult | null>(prefilled ?? null)
   const [destError, setDestError] = useState('')
@@ -296,7 +307,7 @@ export function NewRidePage() {
       return
     }
 
-    const schedule = buildScheduledAt(date, time, isImmediate)
+    const schedule = buildScheduledAt(date, time)
     if (schedule.error) {
       setScheduleError(schedule.error)
       return
@@ -313,7 +324,6 @@ export function NewRidePage() {
       destLat: dest.lat,
       destLng: dest.lng,
       scheduledAt,
-      isImmediate,
       notes,
       // Envia dados de rota calculados no browser para evitar recálculo no servidor
       ...(routePreview && {
@@ -393,51 +403,32 @@ export function NewRidePage() {
 
             {/* Quando */}
             <Card>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Quando?</p>
-              <div className="flex gap-2 mb-3">
-                {[{ label: 'Agora', value: true }, { label: 'Agendar', value: false }].map(opt => (
-                  <button
-                    key={String(opt.value)}
-                    type="button"
-                    onClick={() => { setIsImmediate(opt.value); setScheduleError('') }}
-                    className={`flex-1 h-9 rounded-lg text-sm font-medium border transition-colors ${
-                      isImmediate === opt.value
-                        ? 'bg-brand-50 border-brand-600 text-brand-800'
-                        : 'bg-gray-50 border-gray-200 text-gray-500'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Quando?</p>
+              <p className="text-xs text-gray-400 mb-3">Agende com pelo menos {MIN_LEAD_TIME_HOURS} horas de antecedência.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Data</label>
+                  <input
+                    type="date"
+                    className="input-field"
+                    value={date}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={e => { setDate(e.target.value); setScheduleError('') }}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Horário</label>
+                  <input
+                    type="time"
+                    className="input-field"
+                    value={time}
+                    onChange={e => { setTime(e.target.value); setScheduleError('') }}
+                    required
+                  />
+                </div>
               </div>
-              {!isImmediate && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Data</label>
-                      <input
-                        type="date"
-                        className="input-field"
-                        value={date}
-                        min={new Date().toISOString().split('T')[0]}
-                        onChange={e => { setDate(e.target.value); setScheduleError('') }}
-                        required={!isImmediate}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Horário</label>
-                      <input
-                        type="time"
-                        className="input-field"
-                        value={time}
-                        onChange={e => { setTime(e.target.value); setScheduleError('') }}
-                        required={!isImmediate}
-                      />
-                    </div>
-                  </div>
-                  {scheduleError && <p className="text-xs text-red-500 mt-2">{scheduleError}</p>}
-                </>
-              )}
+              {scheduleError && <p className="text-xs text-red-500 mt-2">{scheduleError}</p>}
             </Card>
 
             {/* Observação */}
@@ -590,17 +581,38 @@ export function RideTrackingPage() {
 
         {/* Card do motorista */}
         {ride.motorista && (
-          <Card className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 font-medium">
-              {ride.motorista.user.name.split(' ').map(n => n[0]).slice(0,2).join('')}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">{ride.motorista.user.name}</p>
+          <Card className="flex items-start gap-3">
+            {ride.motorista.user.avatarUrl ? (
+              <img
+                src={ride.motorista.user.avatarUrl}
+                alt={ride.motorista.user.name}
+                className="w-11 h-11 rounded-full object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 font-medium flex-shrink-0">
+                {ride.motorista.user.name.split(' ').map(n => n[0]).slice(0,2).join('')}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-gray-900 truncate">{ride.motorista.user.name}</p>
+                {ride.motorista.documentsVerifiedAt && (
+                  <ShieldCheck className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" aria-label="Documentos verificados" />
+                )}
+              </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 {ride.motorista.vehicleModel} {ride.motorista.vehicleColor} · {ride.motorista.vehiclePlate}
               </p>
+              {ride.motorista.affiliation && (
+                <p className="text-xs text-gray-400 mt-0.5">{ride.motorista.affiliation}</p>
+              )}
+              <p className="text-xs text-gray-400 mt-0.5">
+                Motorista há {formatDistanceToNow(new Date(ride.motorista.user.createdAt), { locale: ptBR })}
+                {typeof ride.motorista.completedRidesCount === 'number' &&
+                  ` · ${ride.motorista.completedRidesCount} corridas realizadas`}
+              </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <a href={`tel:${ride.motorista.user.phone}`} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center">
                 <Phone className="w-4 h-4 text-brand-600" />
               </a>

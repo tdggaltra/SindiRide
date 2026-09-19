@@ -218,6 +218,14 @@ export function useToggleBlockMotorista() {
   })
 }
 
+export function useVerifyMotoristaDocuments() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => adminService.verifyMotoristaDocuments(userId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'motoristas'] }),
+  })
+}
+
 export function useToggleBlockSindico() {
   const qc = useQueryClient()
   return useMutation({

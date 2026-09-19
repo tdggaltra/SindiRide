@@ -13,7 +13,7 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
       destDistrict:  z.string(),
       destLat:       z.number().refine((v: number) => v !== 0, 'Selecione um destino válido'),
       destLng:       z.number().refine((v: number) => v !== 0, 'Selecione um destino válido'),
-      scheduledAt: z.coerce.date(), isImmediate: z.boolean().default(false), notes: z.string().optional(),
+      scheduledAt: z.coerce.date(), notes: z.string().optional(),
       // Dados de rota pré-calculados pelo frontend (evita chamada OSRM duplicada no servidor)
       clientDistanceKm:  z.number().positive().optional(),
       clientDurationMin: z.number().int().positive().optional(),
@@ -23,15 +23,11 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
     const { sindicoId } = req.user
     if (!sindicoId) throw new ForbiddenError('Perfil de síndico não encontrado')
 
-    // Corridas imediatas usam o horário do servidor para evitar rejeição por drift de relógio
-    if (data.isImmediate) {
-      data.scheduledAt = new Date()
-    } else {
-      // Agendamento: tolera até 1 minuto de diferença de relógio entre cliente e servidor
-      const oneMinuteAgo = new Date(Date.now() - 60_000)
-      if (data.scheduledAt < oneMinuteAgo) {
-        throw new BadRequestError('Não é possível agendar para datas passadas')
-      }
+    // Não há mais corrida imediata — todo agendamento precisa de antecedência
+    // mínima pro motorista se organizar e aceitar a corrida.
+    const MIN_LEAD_TIME_MS = 5 * 60 * 60 * 1000
+    if (data.scheduledAt.getTime() < Date.now() + MIN_LEAD_TIME_MS) {
+      throw new BadRequestError('Agende com pelo menos 5 horas de antecedência')
     }
     const active = await app.prisma.ride.findFirst({
       where: { sindicoId, status: { in: [RideStatus.AGENDADA, RideStatus.ACEITA, RideStatus.EM_ANDAMENTO] } },
@@ -82,11 +78,19 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
       where: { id },
       include: {
         sindico: { include: { user: { select: { name: true, phone: true } } } },
-        motorista: { include: { user: { select: { name: true, phone: true } } } },
+        motorista: { include: { user: { select: { name: true, phone: true, avatarUrl: true, createdAt: true } } } },
         statusHistory: { orderBy: { changedAt: 'asc' } },
       },
     })
     if (!ride) throw new NotFoundError('Corrida')
+
+    // Dados extras de confiança pro síndico (vínculo/verificação já vêm do include acima)
+    if (ride.motorista) {
+      const completedRidesCount = await app.prisma.ride.count({
+        where: { motoristaId: ride.motorista.id, status: RideStatus.CONCLUIDA },
+      })
+      return reply.send({ ...ride, motorista: { ...ride.motorista, completedRidesCount } })
+    }
     return reply.send(ride)
   })
 
