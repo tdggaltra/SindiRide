@@ -16,11 +16,11 @@ self.addEventListener('message', ({ data }) => {
     }
 
     self.firebase.messaging().onBackgroundMessage(payload => {
-      const title = payload.notification?.title ?? 'SindiRide'
+      const title = payload.notification?.title ?? 'DriveSíndicos'
       const body  = payload.notification?.body  ?? ''
       self.registration.showNotification(title, {
         body,
-        icon: '/vite.svg',
+        icon: '/brand-mark.png',
         data: payload.data ?? {},
       })
     })

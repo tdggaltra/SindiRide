@@ -868,7 +868,7 @@ export function AdminConfigPage() {
   ]
 
   const operationalInfo = [
-    { label: 'Sistema',           value: 'SindiRide v1.0' },
+    { label: 'Sistema',           value: 'DriveSíndicos v1.0' },
     { label: 'Região de operação', value: 'Londrina — PR e Região Metropolitana' },
     { label: 'Modalidade',         value: 'Corridas 100% gratuitas' },
     { label: 'Público-alvo',       value: 'Síndicos em exercício de função administrativa' },

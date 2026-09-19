@@ -75,10 +75,10 @@ export function setupForegroundMessages(): () => void {
   if (!isConfigured()) return () => {}
   try {
     return onMessage(getFirebaseMsg(), payload => {
-      const title = payload.notification?.title ?? 'SindiRide'
+      const title = payload.notification?.title ?? 'DriveSíndicos'
       const body  = payload.notification?.body  ?? ''
       if (Notification.permission === 'granted') {
-        new Notification(title, { body, icon: '/vite.svg' })
+        new Notification(title, { body, icon: '/brand-mark.png' })
       }
     })
   } catch {

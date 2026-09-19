@@ -4,18 +4,28 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Escala ancorada nos azuis oficiais DriveSíndicos:
+        // 600 = Azul Institucional (#185FA5), 800 = Azul Profundo (#0F4C81).
+        // Antes desta mudança, 300/500/700 não existiam no config mas já
+        // eram referenciados no código (sindico/index.tsx, mapas,
+        // reset-password) — essas classes eram no-ops silenciosos.
         brand: {
           50:  '#E6F1FB',
           100: '#B5D4F4',
           200: '#85B7EB',
-          400: '#378ADD',
+          300: '#5FA0E0',
+          400: '#3BA6FF',
+          500: '#2E7FC7',
           600: '#185FA5',
-          800: '#0C447C',
+          700: '#125189',
+          800: '#0F4C81',
           900: '#042C53',
         },
+        success: '#00C853',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Manrope', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: '8px',

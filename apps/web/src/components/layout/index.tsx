@@ -7,19 +7,15 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth.store'
 import { useLogout, useNotifications, useMotoristaActiveRide } from '@/hooks'
+import { BrandLogo, BrandLockup } from '@/components/branding/Logo'
 
 // ── AuthLayout ─────────────────────────────────────────────────────────────
 export function AuthLayout() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2 justify-center mb-8">
-          <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center">
-            <Car className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-medium text-gray-900">
-            Sindi<span className="text-brand-600">Ride</span>
-          </span>
+        <div className="flex items-center justify-center mb-8">
+          <BrandLockup />
         </div>
         <Outlet />
       </div>
@@ -50,12 +46,7 @@ export function SindicoLayout() {
       {/* ── Sidebar — visível apenas em desktop (md+) ─────────────────── */}
       <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-56 bg-white border-r border-gray-100 z-40">
         <div className="flex items-center gap-2 px-4 py-5 border-b border-gray-100">
-          <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
-            <Car className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-medium text-gray-900">
-            Sindi<span className="text-brand-600">Ride</span>
-          </span>
+          <BrandLogo size="sm" />
         </div>
 
         <nav className="flex-1 p-3 flex flex-col gap-0.5">
@@ -199,16 +190,7 @@ export function AdminLayout() {
     </>
   )
 
-  const Brand = () => (
-    <div className="flex items-center gap-2">
-      <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
-        <Car className="w-4 h-4 text-white" />
-      </div>
-      <span className="font-medium text-gray-900">
-        Sindi<span className="text-brand-600">Ride</span>
-      </span>
-    </div>
-  )
+  const Brand = () => <BrandLogo size="sm" />
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -285,12 +267,7 @@ export function MotoristaLayout() {
       {/* ── Sidebar — visível apenas em desktop (md+) ─────────────────── */}
       <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-56 bg-white border-r border-gray-100 z-40">
         <div className="flex items-center gap-2 px-4 py-5 border-b border-gray-100">
-          <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
-            <Car className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-medium text-gray-900">
-            Sindi<span className="text-brand-600">Ride</span>
-          </span>
+          <BrandLogo size="sm" />
         </div>
 
         <nav className="flex-1 p-3 flex flex-col gap-0.5">

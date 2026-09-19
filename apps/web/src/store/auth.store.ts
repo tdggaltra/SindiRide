@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, token: null, refreshToken: null }),
     }),
     {
-      name: 'sindiride:auth',
+      name: 'drivesindicos:auth',
       // Persiste apenas os campos necessários
       partialize: (state) => ({
         user: state.user,
