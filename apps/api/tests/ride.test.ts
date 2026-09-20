@@ -184,6 +184,71 @@ describe('Rides', () => {
     expect(cancelled.statusCode).toBe(422)
   })
 
+  it('motorista cancela corrida aceita: reabre pro pool em vez de cancelar de vez', async () => {
+    const { rideId, motoristaToken } = await createScheduledRide()
+    await app.inject({ method: 'PATCH', url: `/api/rides/${rideId}/accept`, headers: auth(motoristaToken) })
+
+    const cancelled = await app.inject({
+      method: 'PATCH', url: `/api/rides/${rideId}/cancel`, headers: auth(motoristaToken), payload: {},
+    })
+    expect(cancelled.statusCode).toBe(200)
+    expect(cancelled.json().status).toBe('AGENDADA')
+    expect(cancelled.json().motoristaId).toBeNull()
+
+    // outro motorista consegue ver e aceitar a corrida reaberta
+    const { user: otherUser, password: otherPassword } = await createMotorista(app.prisma)
+    const otherToken = await loginAs(app, otherUser.cpf, otherPassword)
+    const accepted = await app.inject({
+      method: 'PATCH', url: `/api/rides/${rideId}/accept`, headers: auth(otherToken),
+    })
+    expect(accepted.statusCode).toBe(200)
+  })
+
+  it('desiste e cancela de vez após 3 motoristas cancelarem a mesma corrida', async () => {
+    const { rideId, sindicoToken } = await createScheduledRide()
+
+    for (let i = 0; i < 3; i++) {
+      const { user, password } = await createMotorista(app.prisma)
+      const token = await loginAs(app, user.cpf, password)
+      await app.inject({ method: 'PATCH', url: `/api/rides/${rideId}/accept`, headers: auth(token) })
+      const res = await app.inject({ method: 'PATCH', url: `/api/rides/${rideId}/cancel`, headers: auth(token), payload: {} })
+
+      if (i < 2) {
+        expect(res.statusCode).toBe(200)
+        expect(res.json().status).toBe('AGENDADA')
+      } else {
+        expect(res.statusCode).toBe(200)
+        expect(res.json().status).toBe('CANCELADA')
+        expect(res.json().cancelledBy).toBe('SISTEMA')
+      }
+    }
+
+    const final = await app.inject({ method: 'GET', url: `/api/rides/${rideId}`, headers: auth(sindicoToken) })
+    expect(final.json().status).toBe('CANCELADA')
+  })
+
+  it('motorista não pode cancelar corrida que não é dele', async () => {
+    const { rideId, motoristaToken } = await createScheduledRide()
+    await app.inject({ method: 'PATCH', url: `/api/rides/${rideId}/accept`, headers: auth(motoristaToken) })
+
+    const { user: otherUser, password: otherPassword } = await createMotorista(app.prisma)
+    const otherToken = await loginAs(app, otherUser.cpf, otherPassword)
+    const res = await app.inject({
+      method: 'PATCH', url: `/api/rides/${rideId}/cancel`, headers: auth(otherToken), payload: {},
+    })
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('síndico não pode cancelar corrida de outro síndico', async () => {
+    const { rideId } = await createScheduledRide()
+    const { user: otherSindico, password: otherPassword } = await createSindico(app.prisma)
+    const otherToken = await loginAs(app, otherSindico.cpf, otherPassword)
+    const res = await app.inject({
+      method: 'PATCH', url: `/api/rides/${rideId}/cancel`, headers: auth(otherToken), payload: {},
+    })
+    expect(res.statusCode).toBe(403)
+  })
+
   it('GET /:id traz vínculo, verificação e corridas realizadas do motorista', async () => {
     const { rideId, sindicoToken, motoristaToken } = await createScheduledRide()
     await app.inject({ method: 'PATCH', url: `/api/rides/${rideId}/accept`, headers: auth(motoristaToken) })

@@ -168,6 +168,13 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
     return reply.send(updated)
   })
 
+  // Motorista pode cancelar até MAX_MOTORISTA_CANCELLATIONS vezes a mesma
+  // corrida sem que o síndico precise refazer o pedido — a corrida volta
+  // pro "pool" (status AGENDADA, sem motorista) e reaparece pra outros
+  // motoristas em GET /motoristas/rides/pending. Só depois de esgotar as
+  // tentativas (ou quando é o síndico que cancela) a corrida vira terminal.
+  const MAX_MOTORISTA_CANCELLATIONS = 3
+
   app.patch('/:id/cancel', { onRequest: [app.authenticate] }, async (req, reply) => {
     const { id } = req.params as { id: string }
     const { reason } = z.object({ reason: z.string().optional() }).parse(req.body)
@@ -178,26 +185,73 @@ export const rideRoutes: FastifyPluginAsync = async (app) => {
     if (!ride) throw new NotFoundError('Corrida')
     const cancellableStatuses: RideStatus[] = [RideStatus.AGENDADA, RideStatus.ACEITA]
     if (!cancellableStatuses.includes(ride.status)) throw new UnprocessableError('Corrida não pode ser cancelada')
+
     let cancelledBy: CancelledBy = CancelledBy.ADMIN
-    if (req.user.role === 'SINDICO')   cancelledBy = CancelledBy.SINDICO
-    if (req.user.role === 'MOTORISTA') cancelledBy = CancelledBy.MOTORISTA
-    const updated = await app.prisma.ride.update({
-      where: { id },
-      data: { status: RideStatus.CANCELADA, cancelledAt: new Date(), cancelledBy, cancelReason: reason,
-        statusHistory: { create: { status: RideStatus.CANCELADA, changedBy: req.user.sub, note: reason } } },
-    })
-    const targets = app.io.to(`ride:${id}`).to(`user:${ride.sindico.userId}`)
-    if (ride.motorista) targets.to(`user:${ride.motorista.userId}`)
-    targets.emit('ride:cancelled', { rideId: id, status: RideStatus.CANCELADA, reason })
-    if (cancelledBy === CancelledBy.MOTORISTA) {
+    if (req.user.role === 'SINDICO') {
+      if (ride.sindicoId !== req.user.sindicoId) throw new ForbiddenError('Você não pode cancelar esta corrida')
+      cancelledBy = CancelledBy.SINDICO
+    }
+    if (req.user.role === 'MOTORISTA') {
+      if (ride.motoristaId !== req.user.motoristaId) throw new ForbiddenError('Você não pode cancelar esta corrida')
+      cancelledBy = CancelledBy.MOTORISTA
+    }
+
+    const canReopen = cancelledBy === CancelledBy.MOTORISTA
+      && ride.motoristaCancelCount + 1 < MAX_MOTORISTA_CANCELLATIONS
+
+    if (canReopen) {
+      const reopened = await app.prisma.ride.update({
+        where: { id },
+        data: {
+          status: RideStatus.AGENDADA,
+          motoristaId: null,
+          acceptedAt: null,
+          motoristaCancelCount: { increment: 1 },
+          statusHistory: {
+            create: { status: RideStatus.AGENDADA, changedBy: req.user.sub, note: reason ?? 'Motorista cancelou — corrida reaberta para outros motoristas' },
+          },
+        },
+      })
+      app.io.to(`ride:${id}`).to(`user:${ride.sindico.userId}`).emit('ride:reopened', { rideId: id, status: RideStatus.AGENDADA })
       notify(app.prisma, app.io, {
         userId: ride.sindico.userId,
         type: 'CORRIDA_CANCELADA',
-        title: 'Corrida cancelada',
-        body: 'O motorista cancelou a corrida. Tente agendar novamente.',
+        title: 'Motorista cancelou, buscando outro',
+        body: 'O motorista designado cancelou. Já estamos procurando outro motorista disponível pra você.',
         rideId: id,
       }).catch(() => {})
-    } else if (cancelledBy === CancelledBy.SINDICO && ride.motorista) {
+      return reply.send(reopened)
+    }
+
+    // Cancelamento definitivo: síndico cancelando, admin cancelando, ou
+    // motorista cancelando pela última vez permitida (o sistema desiste).
+    const systemGaveUp = cancelledBy === CancelledBy.MOTORISTA
+    const finalCancelledBy = systemGaveUp ? CancelledBy.SISTEMA : cancelledBy
+    const finalReason = systemGaveUp
+      ? `Cancelada automaticamente após ${MAX_MOTORISTA_CANCELLATIONS} motoristas cancelarem`
+      : reason
+
+    const updated = await app.prisma.ride.update({
+      where: { id },
+      data: {
+        status: RideStatus.CANCELADA, cancelledAt: new Date(), cancelledBy: finalCancelledBy, cancelReason: finalReason,
+        ...(systemGaveUp && { motoristaCancelCount: { increment: 1 } }),
+        statusHistory: { create: { status: RideStatus.CANCELADA, changedBy: req.user.sub, note: finalReason } },
+      },
+    })
+    const targets = app.io.to(`ride:${id}`).to(`user:${ride.sindico.userId}`)
+    if (ride.motorista) targets.to(`user:${ride.motorista.userId}`)
+    targets.emit('ride:cancelled', { rideId: id, status: RideStatus.CANCELADA, reason: finalReason })
+
+    if (systemGaveUp) {
+      notify(app.prisma, app.io, {
+        userId: ride.sindico.userId,
+        type: 'CORRIDA_CANCELADA',
+        title: 'Não encontramos um motorista',
+        body: `Depois de ${MAX_MOTORISTA_CANCELLATIONS} tentativas, não conseguimos um motorista para essa corrida. Tente agendar novamente.`,
+        rideId: id,
+      }).catch(() => {})
+    } else if (finalCancelledBy === CancelledBy.SINDICO && ride.motorista) {
       notify(app.prisma, app.io, {
         userId: ride.motorista.userId,
         type: 'CORRIDA_CANCELADA',

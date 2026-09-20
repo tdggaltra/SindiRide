@@ -189,6 +189,9 @@ model Ride {
   cancelledAt     DateTime?
   cancelledBy     CancelledBy?
   cancelReason    String?
+  // Quantas vezes um motorista aceitou e depois cancelou esta corrida —
+  // ao atingir o limite, o sistema desiste de reabrir e cancela de vez.
+  motoristaCancelCount Int @default(0)
   rating          Int?
   ratingComment   String?
   ratedAt         DateTime?

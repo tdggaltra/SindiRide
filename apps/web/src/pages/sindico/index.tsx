@@ -477,6 +477,7 @@ export function RideTrackingPage() {
   useSocketEvent('ride:started',   () => qc.invalidateQueries({ queryKey: ['ride', id] }))
   useSocketEvent('ride:finished',  () => qc.invalidateQueries({ queryKey: ['ride', id] }))
   useSocketEvent('ride:cancelled', () => qc.invalidateQueries({ queryKey: ['ride', id] }))
+  useSocketEvent('ride:reopened',  () => qc.invalidateQueries({ queryKey: ['ride', id] }))
   useSocketEvent<{ rideId: string; lat: number; lng: number }>('driver:location', (data) => {
     if (data.rideId === id) setDriverLocation({ lat: data.lat, lng: data.lng })
   })

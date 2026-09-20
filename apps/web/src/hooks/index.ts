@@ -109,6 +109,10 @@ export function useCancelRide() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['ride', vars.id] })
       qc.invalidateQueries({ queryKey: ['rides'] })
+      // Cobre o caso do motorista cancelar: a corrida reabre no pool e some
+      // da sua corrida ativa, então as duas listas do lado motorista mudam.
+      qc.invalidateQueries({ queryKey: ['motorista', 'ride', 'active'] })
+      qc.invalidateQueries({ queryKey: ['motorista', 'rides', 'pending'] })
     },
   })
 }

@@ -14,6 +14,7 @@ import { rideRoutes } from './modules/ride/ride.routes'
 import { routeRoutes } from './modules/route/route.routes'
 import { adminRoutes } from './modules/admin/admin.routes'
 import { notificationRoutes } from './modules/notification/notification.routes'
+import { startRideTimeoutWatcher } from './shared/utils/ride-timeout-watcher'
 
 export async function buildApp() {
   const app = Fastify({
@@ -49,6 +50,8 @@ await app.register(authRoutes,         { prefix: '/api/auth' })
   await app.register(routeRoutes,        { prefix: '/api/routes' })
   await app.register(adminRoutes,        { prefix: '/api/admin' })
   await app.register(notificationRoutes, { prefix: '/api/notifications' })
+
+  startRideTimeoutWatcher(app)
 
   return app
 }
