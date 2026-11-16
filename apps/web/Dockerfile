@@ -41,10 +41,9 @@ RUN npm run build
 # ─── Production (Nginx para servir os estáticos) ────────────────────────────────
 FROM nginx:alpine AS production
 COPY --from=builder /app/dist /usr/share/nginx/html
-# .template (em vez de ir direto pra conf.d) faz a própria imagem oficial do
-# nginx rodar envsubst nele no boot, substituindo ${PORT} pelo valor real —
-# o Railway (e outros PaaS) injetam essa porta dinamicamente, não é fixa.
-COPY nginx.conf /etc/nginx/templates/default.conf.template
-ENV PORT=80
-EXPOSE 80
+# Porta fixa (8080) — pro Railway apontar explicitamente pra essa porta nas
+# configurações de rede do serviço (Dockerfile não tem o mesmo auto-detect
+# de PORT que serviços via Nixpacks/Railpack têm).
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
