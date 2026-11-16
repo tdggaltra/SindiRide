@@ -5,7 +5,7 @@ import { ForbiddenError, NotFoundError } from '../../shared/errors/app.errors'
 const rideInclude = {
   sindico: {
     include: {
-      user: { select: { name: true, phone: true } },
+      user: { select: { name: true, phone: true, avatarUrl: true } },
     },
   },
 } as const

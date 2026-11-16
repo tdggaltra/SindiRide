@@ -9,12 +9,13 @@ interface AuthState {
 
   setAuth: (user: User, token: string, refreshToken: string) => void
   setTokens: (token: string, refreshToken: string) => void
+  updateUser: (partial: Partial<User>) => void
   logout: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       refreshToken: null,
@@ -24,6 +25,11 @@ export const useAuthStore = create<AuthState>()(
 
       setTokens: (token, refreshToken) =>
         set({ token, refreshToken }),
+
+      updateUser: (partial) => {
+        const current = get().user
+        if (current) set({ user: { ...current, ...partial } })
+      },
 
       logout: () =>
         set({ user: null, token: null, refreshToken: null }),

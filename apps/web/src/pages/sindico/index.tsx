@@ -3,8 +3,8 @@ import { Plus, Car, Calendar, Clock, MapPin, Phone, MessageCircle, CheckCircle, 
 import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAuthStore } from '@/store/auth.store'
-import { useRides, useRide, useCreateRide, useCancelRide, useRateRide, useSindicoMe, useLogout, useRoutes } from '@/hooks'
-import { Button, Card, RideStatusBadge, Spinner, ErrorBoundary } from '@/components/ui'
+import { useRides, useRide, useCreateRide, useCancelRide, useRateRide, useSindicoMe, useLogout, useRoutes, useUploadAvatar } from '@/hooks'
+import { Button, Card, RideStatusBadge, Spinner, ErrorBoundary, AvatarUpload } from '@/components/ui'
 import { useSocketEvent } from '@/hooks/useSocket'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
@@ -689,6 +689,8 @@ export function ProfilePage() {
   const { user } = useAuthStore()
   const { data: sindico, isLoading } = useSindicoMe()
   const logout = useLogout()
+  const uploadAvatar = useUploadAvatar()
+  const [avatarError, setAvatarError] = useState('')
 
   const mandateLabels: Record<string, string> = {
     ELEITO: 'Síndico eleito',
@@ -697,24 +699,22 @@ export function ProfilePage() {
     INTERINO: 'Síndico interino',
   }
 
-  const initials = user?.name
-    .split(' ')
-    .slice(0, 2)
-    .map(n => n[0])
-    .join('')
-    .toUpperCase() ?? 'SI'
-
   return (
     <div className="px-4 pt-12 pb-4">
       <h1 className="text-lg font-medium text-gray-900 mb-5">Perfil</h1>
 
       {/* Avatar + nome */}
       <div className="flex flex-col items-center mb-6">
-        <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 text-xl font-medium mb-3">
-          {initials}
-        </div>
-        <p className="text-base font-medium text-gray-900">{user?.name}</p>
+        <AvatarUpload
+          avatarUrl={user?.avatarUrl}
+          name={user?.name ?? 'Síndico'}
+          uploading={uploadAvatar.isPending}
+          onUpload={file => { setAvatarError(''); uploadAvatar.mutate(file) }}
+          onError={setAvatarError}
+        />
+        <p className="text-base font-medium text-gray-900 mt-3">{user?.name}</p>
         <p className="text-sm text-gray-400">{user?.email}</p>
+        {avatarError && <p className="text-xs text-red-500 mt-1">{avatarError}</p>}
       </div>
 
       {/* Dados pessoais */}

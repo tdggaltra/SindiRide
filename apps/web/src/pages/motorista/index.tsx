@@ -7,10 +7,10 @@ import { useAuthStore } from '@/store/auth.store'
 import {
   useMotoristaMe, usePendingRides, useMotoristaActiveRide,
   useToggleAvailability, useAcceptRide, useStartRide, useFinishRide,
-  useCancelRide, useLogout, useMotoristaRideHistory,
+  useCancelRide, useLogout, useMotoristaRideHistory, useUploadAvatar,
 } from '@/hooks'
 import { RideStatusBadge } from '@/components/ui'
-import { Button, Card, Spinner, ErrorBoundary } from '@/components/ui'
+import { Button, Card, Spinner, ErrorBoundary, AvatarUpload } from '@/components/ui'
 import { MapView } from '@/components/map/MapView'
 import { useSocket } from '@/hooks/useSocket'
 
@@ -381,9 +381,17 @@ export function MotoristaActiveRidePage() {
       <div className="flex-1 px-4 py-4 md:px-6 md:py-6 flex flex-col gap-4 md:overflow-y-auto">
         {/* Síndico */}
         <Card className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 font-medium flex-shrink-0">
-            {ride.sindico?.user?.name?.split(' ').slice(0, 2).map(n => n[0]).join('') ?? '?'}
-          </div>
+          {ride.sindico?.user?.avatarUrl ? (
+            <img
+              src={ride.sindico.user.avatarUrl}
+              alt={ride.sindico.user.name}
+              className="w-11 h-11 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-11 h-11 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 font-medium flex-shrink-0">
+              {ride.sindico?.user?.name?.split(' ').slice(0, 2).map(n => n[0]).join('') ?? '?'}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900">{ride.sindico?.user?.name ?? '—'}</p>
             <p className="text-xs text-gray-400 truncate">{ride.sindico?.condominiumName ?? ''}</p>
@@ -472,10 +480,10 @@ export function MotoristaProfilePage() {
   const { data: histData } = useMotoristaRideHistory(1)
   const toggle = useToggleAvailability()
   const logout = useLogout()
+  const uploadAvatar = useUploadAvatar()
+  const [avatarError, setAvatarError] = useState('')
 
   const recentRatings = histData?.data?.filter(r => r.rating) ?? []
-
-  const initials = user?.name?.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() ?? 'MO'
 
   return (
     <div className="px-4 pt-12 pb-4">
@@ -483,16 +491,21 @@ export function MotoristaProfilePage() {
 
       {/* Avatar + disponibilidade */}
       <div className="flex flex-col items-center mb-6">
-        <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 text-xl font-medium mb-3">
-          {initials}
-        </div>
-        <p className="text-base font-medium text-gray-900">{user?.name}</p>
+        <AvatarUpload
+          avatarUrl={user?.avatarUrl}
+          name={user?.name ?? 'Motorista'}
+          uploading={uploadAvatar.isPending}
+          onUpload={file => { setAvatarError(''); uploadAvatar.mutate(file) }}
+          onError={setAvatarError}
+        />
+        <p className="text-base font-medium text-gray-900 mt-3">{user?.name}</p>
         <div className="flex items-center gap-1.5 mt-1">
           <div className={`w-2 h-2 rounded-full ${motorista?.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} />
           <span className="text-sm text-gray-500">
             {motorista?.isAvailable ? 'Online' : 'Offline'}
           </span>
         </div>
+        {avatarError && <p className="text-xs text-red-500 mt-1">{avatarError}</p>}
       </div>
 
       {/* Toggle disponibilidade */}

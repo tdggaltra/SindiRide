@@ -1,5 +1,5 @@
 import React from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Camera } from 'lucide-react'
 
 // ── Button ─────────────────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -146,6 +146,63 @@ export function Pagination({
       >
         Próxima
       </button>
+    </div>
+  )
+}
+
+// ── AvatarUpload — avatar clicável com upload de foto de perfil ────────────
+const MAX_AVATAR_SIZE_MB = 5
+
+export function AvatarUpload({
+  avatarUrl,
+  name,
+  uploading = false,
+  onUpload,
+  onError,
+}: {
+  avatarUrl?: string
+  name: string
+  uploading?: boolean
+  onUpload: (file: File) => void
+  onError?: (message: string) => void
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const initials = name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
+
+  return (
+    <div className="relative w-16 h-16 flex-shrink-0">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={name} className="w-16 h-16 rounded-full object-cover" />
+      ) : (
+        <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 text-xl font-medium">
+          {initials}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        title="Trocar foto"
+        className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-brand-600 border-2 border-white flex items-center justify-center text-white disabled:opacity-60"
+      >
+        {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (!file) return
+          if (file.size > MAX_AVATAR_SIZE_MB * 1024 * 1024) {
+            onError?.(`A imagem precisa ter no máximo ${MAX_AVATAR_SIZE_MB}MB.`)
+            return
+          }
+          onUpload(file)
+        }}
+      />
     </div>
   )
 }

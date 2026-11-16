@@ -21,6 +21,18 @@ export const authService = {
     const { data } = await api.get('/api/auth/me')
     return data
   },
+
+  uploadAvatar: async (file: File): Promise<{ avatarUrl: string }> => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    // O client tem Content-Type: application/json por padrão — precisa ser
+    // explicitamente desligado aqui pro navegador calcular sozinho o
+    // boundary do multipart, senão o servidor não consegue parsear o corpo.
+    const { data } = await api.patch('/api/auth/avatar', formData, {
+      headers: { 'Content-Type': undefined },
+    })
+    return data
+  },
 }
 
 // ── Corridas ───────────────────────────────────────────────────────────────

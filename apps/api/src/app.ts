@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
+import multipart from '@fastify/multipart'
 import { rateLimitErrorResponseBuilder } from './shared/utils/rate-limit'
 import { prismaPlugin } from './shared/plugins/prisma.plugin'
 import { jwtPlugin } from './shared/plugins/jwt.plugin'
@@ -31,6 +32,8 @@ await app.register(helmet, { contentSecurityPolicy: false })
     timeWindow: '1 minute',
     errorResponseBuilder: rateLimitErrorResponseBuilder,
   })
+
+  await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } })
 
   await app.register(prismaPlugin)
   await app.register(jwtPlugin)

@@ -5,6 +5,9 @@ import { AuthService } from './services/auth.service'
 import { loginSchema, registerSchema, refreshSchema } from './schemas/auth.schema'
 import { BadRequestError } from '../../shared/errors/app.errors'
 import { rateLimitErrorResponseBuilder } from '../../shared/utils/rate-limit'
+import { uploadAvatar, deleteAvatarByUrl } from '../../shared/utils/storage'
+
+const ALLOWED_AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 // Em teste, os testes de integração fazem dezenas de logins no mesmo "IP"
 // (127.0.0.1 do app.inject) só pra montar cenários de negócio — um limite de
@@ -89,6 +92,25 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const { fcmToken } = z.object({ fcmToken: z.string().min(1) }).parse(req.body)
     await app.prisma.user.update({ where: { id: req.user.sub }, data: { fcmToken } })
     return reply.send({ ok: true })
+  })
+
+  // Upload de foto de perfil — síndico e motorista usam o mesmo endpoint
+  app.patch('/avatar', { onRequest: [app.authenticate] }, async (req, reply) => {
+    const file = await req.file()
+    if (!file) throw new BadRequestError('Envie um arquivo de imagem')
+    if (!ALLOWED_AVATAR_MIME_TYPES.includes(file.mimetype)) {
+      throw new BadRequestError('Formato inválido — envie uma imagem JPEG, PNG ou WebP')
+    }
+
+    const buffer = await file.toBuffer()
+    const user = await app.prisma.user.findUnique({ where: { id: req.user.sub }, select: { avatarUrl: true } })
+
+    const avatarUrl = await uploadAvatar(buffer, req.user.sub)
+    await app.prisma.user.update({ where: { id: req.user.sub }, data: { avatarUrl } })
+
+    if (user?.avatarUrl) await deleteAvatarByUrl(user.avatarUrl)
+
+    return reply.send({ avatarUrl })
   })
 
   // Redefine a senha com o token recebido

@@ -86,7 +86,7 @@ export interface Ride {
     condominiumName: string
     condominiumAddress: string
     condominiumDistrict: string
-    user: { name: string; phone: string }
+    user: { name: string; phone: string; avatarUrl?: string }
   }
   motorista?: Motorista
   route?: Route

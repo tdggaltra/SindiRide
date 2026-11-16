@@ -59,6 +59,20 @@ export function useLogout() {
   })
 }
 
+export function useUploadAvatar() {
+  const qc = useQueryClient()
+  const { updateUser } = useAuthStore()
+
+  return useMutation({
+    mutationFn: (file: File) => authService.uploadAvatar(file),
+    onSuccess: ({ avatarUrl }) => {
+      updateUser({ avatarUrl })
+      qc.invalidateQueries({ queryKey: ['sindico', 'me'] })
+      qc.invalidateQueries({ queryKey: ['motorista', 'me'] })
+    },
+  })
+}
+
 // ── Síndico ────────────────────────────────────────────────────────────────
 export function useSindicoMe() {
   return useQuery({
