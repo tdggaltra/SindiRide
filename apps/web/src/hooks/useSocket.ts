@@ -12,7 +12,7 @@ export function useSocket() {
     if (!token) return
 
     if (!globalSocket || !globalSocket.connected) {
-      globalSocket = io(import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:3333', {
+      globalSocket = io(import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:8080', {
         auth: { token },
         reconnectionAttempts: 5,
         reconnectionDelay: 2000,

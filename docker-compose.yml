@@ -50,7 +50,7 @@ services:
       - ./apps/api:/app
       - /app/node_modules
     ports:
-      - "3333:3333"
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy

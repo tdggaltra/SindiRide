@@ -8,7 +8,7 @@ RUN npm install --legacy-peer-deps
 COPY prisma ./prisma
 RUN npx prisma generate
 COPY . .
-EXPOSE 3333
+EXPOSE 8080
 CMD ["npm", "run", "dev"]
 
 FROM base AS builder
@@ -29,5 +29,5 @@ COPY --from=builder --chown=apiuser:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=apiuser:nodejs /app/prisma ./prisma
 COPY --chown=apiuser:nodejs package*.json ./
 USER apiuser
-EXPOSE 3333
+EXPOSE 8080
 CMD ["node", "dist/server.js"]

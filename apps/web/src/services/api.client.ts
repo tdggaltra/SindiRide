@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios'
 import { useAuthStore } from '@/store/auth.store'
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3333',
+  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8080',
   timeout: 15_000,
   headers: { 'Content-Type': 'application/json' },
 })
@@ -47,7 +47,7 @@ api.interceptors.response.use(
       if (!refreshToken) throw new Error('No refresh token')
 
       const { data } = await axios.post(
-        `${import.meta.env.VITE_API_URL ?? 'http://localhost:3333'}/api/auth/refresh`,
+        `${import.meta.env.VITE_API_URL ?? 'http://localhost:8080'}/api/auth/refresh`,
         { refreshToken },
       )
 
