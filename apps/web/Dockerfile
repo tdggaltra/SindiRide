@@ -41,6 +41,10 @@ RUN npm run build
 # ─── Production (Nginx para servir os estáticos) ────────────────────────────────
 FROM nginx:alpine AS production
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# .template (em vez de ir direto pra conf.d) faz a própria imagem oficial do
+# nginx rodar envsubst nele no boot, substituindo ${PORT} pelo valor real —
+# o Railway (e outros PaaS) injetam essa porta dinamicamente, não é fixa.
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+ENV PORT=80
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
