@@ -1,6 +1,11 @@
+// binaryTargets: "native" cobre o dev (container local); os demais cobrem o
+// runtime de produção em node:20-alpine — amd64 (Railway) e arm64 (build
+// local em Mac Apple Silicon), nas duas versões de OpenSSL que o Alpine já
+// usou, pra não depender de qual snapshot a imagem base resolver no build.
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "linux-musl", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-1.1.x", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 datasource db {

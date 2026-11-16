@@ -21,6 +21,7 @@ RUN npm run build
 
 FROM node:20-alpine AS production
 WORKDIR /app
+RUN apk add --no-cache libc6-compat openssl
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 apiuser
 COPY --from=builder --chown=apiuser:nodejs /app/dist ./dist
